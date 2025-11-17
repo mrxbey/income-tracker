@@ -39,7 +39,7 @@
     "@radix-ui/react-toast": "^1.2.4",
     "@supabase/supabase-js": "^2.48.1",
     "@tanstack/react-table": "^8.20.5",
-    "ai": "^4.0.38",
+    "ai": "^5.0.93",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",

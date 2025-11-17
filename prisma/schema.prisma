@@ -253,7 +253,7 @@ model Transaction {
   reviewStatus  ReviewStatus @default(NONE)
 
   installmentPlanId String?
-  installmentPlan   InstallmentPlan? @relation(fields: [installmentPlanId], references: [id], onDelete: SetNull)
+  installmentPlan   InstallmentPlan? @relation("InstallmentTransactions", fields: [installmentPlanId], references: [id], onDelete: SetNull)
 
   statementDocumentId String?
   statementDocument   DocumentUpload? @relation(fields: [statementDocumentId], references: [id], onDelete: SetNull)
@@ -262,6 +262,7 @@ model Transaction {
   raw            Json?   // original payload
 
   txTags         TransactionTag[]
+  extractedLineItems ExtractedLineItem[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -352,7 +353,6 @@ model InstallmentPlan {
   cardAccount    Account  @relation("InstallmentCardAccount", fields: [cardAccountId], references: [id], onDelete: Cascade)
 
   originalTransactionId String?
-  originalTransaction   Transaction?
 
   merchant       String?
   description    String?
@@ -371,7 +371,7 @@ model InstallmentPlan {
   confidence    Float      @default(1.0)
   reviewStatus  InstallmentReviewStatus @default(OK)
 
-  transactions  Transaction[]
+  transactions  Transaction[] @relation("InstallmentTransactions")
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

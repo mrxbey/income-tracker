@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { db as prisma } from '@/lib/prisma'
 
 export interface TransactionSplitInput {
   categoryId: string

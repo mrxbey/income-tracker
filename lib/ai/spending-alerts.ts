@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { db as prisma } from '@/lib/prisma'
 import { TxnType } from '@prisma/client'
 
 export enum AlertType {

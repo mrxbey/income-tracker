@@ -112,6 +112,7 @@ model User {
   exchangeRates     ExchangeRate[]
   budgets           Budget[]
   goals             Goal[]
+  notifications     Notification[]
 }
 
 /* ---------- INSTITUTIONS & ACCOUNTS ---------- */
@@ -630,4 +631,29 @@ model Goal {
 
   @@index([userId, isCompleted])
   @@index([targetDate])
+}
+
+/* ---------- NOTIFICATIONS ---------- */
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type       String   // BUDGET_ALERT, GOAL_PROGRESS, SPENDING_ALERT, etc.
+  priority   String   // LOW, MEDIUM, HIGH
+  title      String
+  message    String   @db.Text
+  actionUrl  String?
+  actionText String?
+  metadata   Json?
+
+  read       Boolean  @default(false)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
 }

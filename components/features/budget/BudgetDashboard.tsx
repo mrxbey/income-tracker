@@ -10,12 +10,10 @@ import { formatCurrency } from '@/lib/utils'
 import {
   Loader2,
   TrendingUp,
-  TrendingDown,
   AlertCircle,
   Plus,
   Minus,
   DollarSign,
-  Calendar,
 } from 'lucide-react'
 import type { BudgetSummary, BudgetWithActual } from '@/lib/services/budget-service'
 

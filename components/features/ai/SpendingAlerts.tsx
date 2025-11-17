@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { formatCurrency } from '@/lib/utils'
 import {
   Loader2,
@@ -13,11 +13,10 @@ import {
   Info,
   TrendingUp,
   DollarSign,
-  Calendar,
   X,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import type { SpendingAlert, AlertSeverity, AlertType } from '@/lib/ai/spending-alerts'
+import type { SpendingAlert, AlertSeverity } from '@/lib/ai/spending-alerts'
 
 export function SpendingAlerts() {
   const [alerts, setAlerts] = useState<SpendingAlert[]>([])
@@ -187,7 +186,7 @@ function SeverityBadge({ severity }: { severity: AlertSeverity }) {
     CRITICAL: { variant: 'destructive', label: 'Critical' },
   }
 
-  const config = variants[severity]
+  const config = variants[severity] || variants.INFO
 
   return <Badge variant={config.variant}>{config.label}</Badge>
 }

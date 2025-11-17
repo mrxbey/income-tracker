@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/networth?days=90
  * Get net worth history
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { userId } = await auth()
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(_request.url)
     const days = parseInt(searchParams.get('days') || '90', 10)
     const includeStats = searchParams.get('stats') === 'true'
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
  * POST /api/networth
  * Save current net worth snapshot
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const { userId } = await auth()
 

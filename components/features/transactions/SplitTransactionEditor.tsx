@@ -27,9 +27,9 @@ import {
 
 interface SplitItem {
   id?: string
-  categoryId: string
+  categoryId?: string
   categoryName?: string
-  amount: number
+  amount?: number
   percentage?: number | null
   description?: string | null
 }
@@ -82,13 +82,13 @@ export function SplitTransactionEditor({
   }
 
   const addSplit = () => {
-    const remaining = totalAmount - splits.reduce((sum, s) => sum + s.amount, 0)
+    const remaining = totalAmount - splits.reduce((sum, s) => sum + (s.amount ?? 0), 0)
 
     setSplits([
       ...splits,
       {
         categoryId: '',
-        amount: Math.max(0, remaining),
+        amount: Math.max(0, remaining) || 0,
         percentage: null,
         description: null,
       },
@@ -121,7 +121,7 @@ export function SplitTransactionEditor({
     const amountPerSplit = totalAmount / splitCount
 
     setSplits(
-      splits.map((split) => ({
+      splits.filter(s => s).map((split) => ({
         ...split,
         amount: amountPerSplit,
         percentage: 100 / splitCount,
@@ -135,7 +135,7 @@ export function SplitTransactionEditor({
       setError(null)
 
       // Validate
-      const total = splits.reduce((sum, s) => sum + s.amount, 0)
+      const total = splits.reduce((sum, s) => sum + (s.amount ?? 0), 0)
       if (Math.abs(total - totalAmount) > 0.01) {
         setError(`Split total ($${total.toFixed(2)}) must equal transaction amount ($${totalAmount.toFixed(2)})`)
         return
@@ -199,7 +199,7 @@ export function SplitTransactionEditor({
     )
   }
 
-  const splitTotal = splits.reduce((sum, s) => sum + s.amount, 0)
+  const splitTotal = splits.reduce((sum, s) => sum + (s.amount ?? 0), 0)
   const remaining = totalAmount - splitTotal
   const isValid = Math.abs(remaining) < 0.01 && splits.every((s) => s.categoryId)
 
@@ -348,7 +348,7 @@ export function SplitTransactionEditor({
           </Button>
         </div>
 
-        {splits.length > 0 && splits[0].id && (
+        {splits.length > 0 && splits[0]?.id && (
           <Button
             variant="destructive"
             onClick={removeSplitting}

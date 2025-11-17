@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * Update a tag rule
  */
 export async function PATCH(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -22,7 +22,7 @@ export async function PATCH(
 
     const params = await context.params
     const ruleId = params.id
-    const body = await request.json()
+    const body = await _request.json()
 
     const rule = await updateTagRule(userId, ruleId, body)
 
@@ -41,7 +41,7 @@ export async function PATCH(
  * Delete a tag rule
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {

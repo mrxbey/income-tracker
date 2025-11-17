@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/budgets
  * Get all budgets for the authenticated user
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { userId } = await auth()
 

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * Update a budget
  */
 export async function PATCH(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -22,7 +22,7 @@ export async function PATCH(
 
     const params = await context.params
     const budgetId = params.id
-    const body = await request.json()
+    const body = await _request.json()
 
     const { amount, startDate, endDate, isActive } = body
 
@@ -50,7 +50,7 @@ export async function PATCH(
  * Delete a budget
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {

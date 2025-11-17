@@ -122,7 +122,7 @@ export function GoalTracker() {
   )
 }
 
-function GoalCard({ goal, onUpdate }: { goal: GoalWithProgress; onUpdate: () => void }) {
+function GoalCard({ goal }: { goal: GoalWithProgress; onUpdate: () => void }) {
   return (
     <Card className={goal.isCompleted ? 'bg-green-50/50' : ''}>
       <CardHeader className="pb-3">

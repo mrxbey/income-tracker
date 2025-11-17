@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/tag-rules?suggest=true
  * Get user's tag rules or suggestions
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { userId } = await auth()
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(_request.url)
     const suggest = searchParams.get('suggest') === 'true'
 
     if (suggest) {

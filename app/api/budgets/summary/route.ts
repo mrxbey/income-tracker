@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/budgets/summary
  * Get budget summary for the current month
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { userId } = await auth()
 

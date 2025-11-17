@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -265,7 +264,7 @@ export function NetWorthChart({ daysBack = 90 }: NetWorthChartProps) {
                               Assets
                             </span>
                             <span className="font-bold text-green-500">
-                              {formatCurrency(payload[0].value as number, 'USD')}
+                              {formatCurrency((payload[0]?.value as number) || 0, 'USD')}
                             </span>
                           </div>
                           <div className="flex flex-col">
@@ -273,7 +272,7 @@ export function NetWorthChart({ daysBack = 90 }: NetWorthChartProps) {
                               Liabilities
                             </span>
                             <span className="font-bold text-red-500">
-                              {formatCurrency(payload[1].value as number, 'USD')}
+                              {formatCurrency((payload[1]?.value as number) || 0, 'USD')}
                             </span>
                           </div>
                           <div className="flex flex-col col-span-2">
@@ -281,7 +280,7 @@ export function NetWorthChart({ daysBack = 90 }: NetWorthChartProps) {
                               Net Worth
                             </span>
                             <span className="font-bold text-blue-500">
-                              {formatCurrency(payload[2].value as number, 'USD')}
+                              {formatCurrency((payload[2]?.value as number) || 0, 'USD')}
                             </span>
                           </div>
                         </div>

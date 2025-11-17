@@ -141,7 +141,7 @@ export async function getBudgetSummary(userId: string): Promise<BudgetSummary> {
     overallPercentage,
     categoriesCount: budgets.length,
     overBudgetCount,
-    currency: budgets[0].currency, // Assume all budgets use same currency
+    currency: budgets[0]?.currency || 'USD', // Assume all budgets use same currency
     budgets: budgetsWithActual.sort((a, b) => b.percentage - a.percentage), // Sort by percentage (highest first)
   }
 }

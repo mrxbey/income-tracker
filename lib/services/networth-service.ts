@@ -180,7 +180,7 @@ export async function getNetWorthStats(userId: string) {
     }
   }
 
-  const current = history[history.length - 1].netWorth
+  const current = history[history.length - 1]!.netWorth
 
   // Find values at different time periods
   const thirtyDaysAgo = new Date()
@@ -190,11 +190,11 @@ export async function getNetWorthStats(userId: string) {
   const oneYearAgo = new Date()
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
-  const find30 = history.findLast((h) => h.date <= thirtyDaysAgo)
-  const find90 = history.findLast((h) => h.date <= ninetyDaysAgo)
-  const findYear = history.findLast((h) => h.date <= oneYearAgo)
+  const find30 = history.filter((h) => h.date <= thirtyDaysAgo).pop()
+  const find90 = history.filter((h) => h.date <= ninetyDaysAgo).pop()
+  const findYear = history.filter((h) => h.date <= oneYearAgo).pop()
 
-  const value30 = find30?.netWorth || current
+  const value30 = find30?.netWorth ?? current
   const value90 = find90?.netWorth || current
   const valueYear = findYear?.netWorth || current
 
@@ -207,7 +207,7 @@ export async function getNetWorthStats(userId: string) {
   const percentChangeYear = valueYear !== 0 ? (changeYear / valueYear) * 100 : 0
 
   const allTimeHigh = Math.max(...history.map((h) => h.netWorth))
-  const allTimeLow = Math.min(...history.map((h) => h.netWorth))
+  const allTimeLow = history.length > 0 ? Math.min(...history.map((h) => h.netWorth)) : 0
 
   return {
     current,

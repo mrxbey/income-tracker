@@ -49,7 +49,7 @@ export async function detectRecurringPatterns(
     const twelveMonthsAgo = new Date()
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
 
-    const transactions = await prisma.transaction.findMany({
+    const txnData = await prisma.transaction.findMany({
       where: {
         account: {
           userId,
@@ -72,6 +72,18 @@ export async function detectRecurringPatterns(
         postedAt: 'desc',
       },
     })
+
+    // Convert Decimal to number
+    const transactions: TransactionForAnalysis[] = txnData.map(txn => ({
+      id: txn.id,
+      description: txn.description,
+      merchant: txn.merchant,
+      amount: Number(txn.amount),
+      currency: txn.currency,
+      postedAt: txn.postedAt,
+      type: txn.type,
+      categoryId: txn.categoryId,
+    }))
 
     // Group transactions by merchant (case-insensitive)
     const merchantGroups = groupByMerchant(transactions)
@@ -127,7 +139,7 @@ function analyzePattern(
   const intervals: number[] = []
   for (let i = 1; i < sortedTxns.length; i++) {
     const daysDiff = Math.round(
-      (sortedTxns[i].postedAt.getTime() - sortedTxns[i - 1].postedAt.getTime()) /
+      (sortedTxns[i]!.postedAt.getTime() - sortedTxns[i - 1]!.postedAt.getTime()) /
         (1000 * 60 * 60 * 24)
     )
     intervals.push(daysDiff)
@@ -158,7 +170,7 @@ function analyzePattern(
     const days = sortedTxns.map((txn) => txn.postedAt.getDate())
     dayOfMonth = Math.round(days.reduce((sum, val) => sum + val, 0) / days.length)
     const dayStdDev = calculateStdDev(days)
-    dayConsistency = 1 - Math.min(dayStdDev / dayOfMonth, 1)
+    dayConsistency = 1 - Math.min(dayStdDev / (dayOfMonth || 1), 1)
   } else if (frequency === Period.WEEKLY) {
     const days = sortedTxns.map((txn) => txn.postedAt.getDay())
     dayOfWeek = Math.round(days.reduce((sum, val) => sum + val, 0) / days.length)
@@ -174,7 +186,7 @@ function analyzePattern(
     Math.min(sortedTxns.length / 12, 1) * 0.1 // 10% weight on number of occurrences
 
   // Calculate next expected date
-  const lastDate = sortedTxns[sortedTxns.length - 1].postedAt
+  const lastDate = sortedTxns[sortedTxns.length - 1]!.postedAt
   const nextExpectedDate = new Date(lastDate)
 
   switch (frequency) {
@@ -184,7 +196,7 @@ function analyzePattern(
     case Period.MONTHLY:
       nextExpectedDate.setMonth(nextExpectedDate.getMonth() + 1)
       if (dayOfMonth) {
-        nextExpectedDate.setDate(dayOfMonth)
+        if (dayOfMonth) nextExpectedDate.setDate(dayOfMonth)
       }
       break
     case Period.QUARTERLY:
@@ -197,9 +209,9 @@ function analyzePattern(
 
   return {
     merchant,
-    description: sortedTxns[0].description,
+    description: sortedTxns[0]!.description,
     averageAmount: avgAmount,
-    currency: sortedTxns[0].currency,
+    currency: sortedTxns[0]!.currency,
     frequency,
     dayOfMonth,
     dayOfWeek,
@@ -208,8 +220,8 @@ function analyzePattern(
     nextExpectedDate,
     confidence,
     transactionIds: sortedTxns.map((txn) => txn.id),
-    type: sortedTxns[0].type,
-    categoryId: sortedTxns[0].categoryId,
+    type: sortedTxns[0]!.type,
+    categoryId: sortedTxns[0]!.categoryId,
   }
 }
 

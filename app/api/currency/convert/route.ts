@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { convertCurrency, getNetWorthInCurrencies } from '@/lib/services/currency-service'
+import { convertCurrency } from '@/lib/services/currency-service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/currency/convert?amount=100&from=USD&to=TRY
  * Convert amount between currencies
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { userId } = await auth()
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(_request.url)
     const amount = parseFloat(searchParams.get('amount') || '0')
     const fromCurrency = searchParams.get('from') || 'USD'
     const toCurrency = searchParams.get('to') || 'USD'

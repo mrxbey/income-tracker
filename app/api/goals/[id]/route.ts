@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * Update goal progress
  */
 export async function PATCH(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -22,7 +22,7 @@ export async function PATCH(
 
     const params = await context.params
     const goalId = params.id
-    const body = await request.json()
+    const body = await _request.json()
     const { currentAmount } = body
 
     if (currentAmount === undefined) {
@@ -49,7 +49,7 @@ export async function PATCH(
  * Delete a goal
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {

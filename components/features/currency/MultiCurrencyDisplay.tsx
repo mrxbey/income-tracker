@@ -14,7 +14,6 @@ import {
   RefreshCw,
   Plus,
   AlertCircle,
-  TrendingUp,
 } from 'lucide-react'
 import {
   Dialog,
@@ -141,7 +140,7 @@ export function MultiCurrencyDisplay({
         </CardContent>
       </Card>
 
-      <ExchangeRatesList onRateUpdated={loadBalances} />
+      <ExchangeRatesList />
     </div>
   )
 }
@@ -275,7 +274,7 @@ function AddExchangeRateForm({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
-function ExchangeRatesList({ onRateUpdated }: { onRateUpdated: () => void }) {
+function ExchangeRatesList() {
   const [rates, setRates] = useState<Array<{
     id: string
     fromCurrency: string

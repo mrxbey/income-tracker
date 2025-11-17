@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * Get transaction with splits
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -48,7 +48,7 @@ export async function GET(
  * Create or update splits for a transaction
  */
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -60,7 +60,7 @@ export async function POST(
 
     const params = await context.params
     const transactionId = params.id
-    const body = await request.json()
+    const body = await _request.json()
     const { splits } = body
 
     if (!splits || !Array.isArray(splits)) {
@@ -107,7 +107,7 @@ export async function POST(
  * Remove all splits from a transaction
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -119,7 +119,7 @@ export async function DELETE(
 
     const params = await context.params
     const transactionId = params.id
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(_request.url)
     const newCategoryId = searchParams.get('categoryId')
 
     await deleteTransactionSplits(transactionId, newCategoryId || undefined)

@@ -8,13 +8,14 @@ import { handleError, UnauthorizedError } from '@/lib/errors'
  * GET /api/accounts/:id
  * Get a single account
  */
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) {
       throw new UnauthorizedError()
     }
 
+    const params = await props.params
     const account = await accountService.getById(userId, params.id)
 
     return Response.json({ account })
@@ -27,13 +28,14 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
  * PATCH /api/accounts/:id
  * Update an account
  */
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) {
       throw new UnauthorizedError()
     }
 
+    const params = await props.params
     const body = await req.json()
     const data = updateAccountSchema.parse(body)
 
@@ -49,13 +51,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
  * DELETE /api/accounts/:id
  * Delete an account
  */
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) {
       throw new UnauthorizedError()
     }
 
+    const params = await props.params
     await accountService.delete(userId, params.id)
 
     return Response.json({ message: 'Account deleted successfully' })

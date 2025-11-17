@@ -4,11 +4,12 @@ import { transactionService } from '@/lib/services/transaction-service'
 import { updateTransactionSchema } from '@/lib/validations'
 import { handleError, UnauthorizedError } from '@/lib/errors'
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) throw new UnauthorizedError()
 
+    const params = await props.params
     const transaction = await transactionService.getById(userId, params.id)
     return Response.json({ transaction })
   } catch (error) {
@@ -16,11 +17,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) throw new UnauthorizedError()
 
+    const params = await props.params
     const body = await req.json()
     const data = updateTransactionSchema.parse(body)
 
@@ -31,11 +33,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) throw new UnauthorizedError()
 
+    const params = await props.params
     await transactionService.delete(userId, params.id)
     return Response.json({ message: 'Transaction deleted successfully' })
   } catch (error) {

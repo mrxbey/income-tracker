@@ -111,6 +111,7 @@ model User {
   apiCreds          ApiCredential[]
   exchangeRates     ExchangeRate[]
   budgets           Budget[]
+  goals             Goal[]
 }
 
 /* ---------- INSTITUTIONS & ACCOUNTS ---------- */
@@ -148,6 +149,7 @@ model Account {
   fixedExpenses FixedExpense[]
   incomeSources IncomeSource[]
   installmentPlans InstallmentPlan[] @relation("InstallmentCardAccount")
+  goals         Goal[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -194,6 +196,7 @@ model Category {
   tagRules          TagRule[]
   extractedLineItems ExtractedLineItem[]
   budgets           Budget[]
+  splits            TransactionSplit[]
 
   @@index([userId, type])
   @@index([userId, parentId])
@@ -265,6 +268,7 @@ model Transaction {
 
   txTags         TransactionTag[]
   extractedLineItems ExtractedLineItem[]
+  splits         TransactionSplit[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -582,4 +586,48 @@ model Budget {
   @@unique([userId, categoryId, startDate])
   @@index([userId, isActive])
   @@index([startDate, endDate])
+}
+
+model TransactionSplit {
+  id             String      @id @default(cuid())
+  transactionId  String
+  transaction    Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  categoryId     String
+  category       Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  amount         Decimal     @db.Decimal(18, 2) // Amount allocated to this category
+  percentage     Decimal?    @db.Decimal(5, 2)  // Optional: percentage of total (0-100)
+  description    String?     // Optional: description for this split
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([transactionId])
+  @@index([categoryId])
+}
+
+model Goal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name          String   // e.g., "Emergency Fund", "Vacation", "Down Payment"
+  description   String?
+  targetAmount  Decimal  @db.Decimal(18, 2)
+  currentAmount Decimal  @db.Decimal(18, 2) @default(0)
+  currency      String   @default("USD")
+
+  targetDate    DateTime?
+  accountId     String?  // Optional: link to specific account
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  isCompleted   Boolean  @default(false)
+  completedAt   DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, isCompleted])
+  @@index([targetDate])
 }

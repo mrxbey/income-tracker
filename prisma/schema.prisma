@@ -1,0 +1,556 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/* ---------- ENUMS ---------- */
+
+enum AccountType {
+  DEPOSIT
+  CREDIT_CARD
+  LOAN
+  INVESTMENT
+  CASH
+  RECEIVABLE
+  OTHER
+}
+
+enum TxnType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  FEE
+  INTEREST
+}
+
+enum Period {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+enum ReviewStatus {
+  NONE
+  PENDING
+  RESOLVED
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum ExtractedStatus {
+  PENDING_REVIEW
+  CONFIRMED
+  DISCARDED
+}
+
+enum TagSource {
+  SYSTEM
+  USER
+  RULE
+  AI
+}
+
+enum TransactionSource {
+  BANK_API
+  PDF
+  IMAGE
+  MANUAL
+}
+
+enum InstallmentReviewStatus {
+  OK
+  NEEDS_REVIEW
+}
+
+enum ImportSourceType {
+  UPLOAD
+  EMAIL_FORWARD
+  BANK_EXPORT
+}
+
+enum ExchangeRateSource {
+  USER
+  SYSTEM
+  API
+}
+
+/* ---------- CORE USER ---------- */
+
+model User {
+  id        String   @id // Clerk userId
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User preferences
+  baseCurrency String @default("TRY")
+  preferredCurrency String @default("TRY")
+
+  accounts          Account[]
+  categories        Category[]
+  tags              Tag[]
+  fixedExpenses     FixedExpense[]
+  incomeSources     IncomeSource[]
+  netWorthSnapshots NetWorthSnapshot[]
+  predictions       Prediction[]
+  documents         DocumentUpload[]
+  rules             TagRule[]
+  installmentPlans  InstallmentPlan[]
+  apiCreds          ApiCredential[]
+  exchangeRates     ExchangeRate[]
+}
+
+/* ---------- INSTITUTIONS & ACCOUNTS ---------- */
+
+model Institution {
+  id       String   @id @default(cuid())
+  name     String
+  slug     String   @unique // "yapikredi", "qnb", "monzo", etc.
+  logoUrl  String?
+  accounts Account[]
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+
+  type          AccountType
+  name          String
+  currency      String        // "TRY", "GBP", "USD", etc.
+  countryCode   String        // "TR", "GB", etc.
+  regionGroup   String        // "TR", "UK", "EU", etc.
+
+  balance       Decimal       @db.Decimal(18, 2)
+  lastSyncedAt  DateTime?
+
+  isActive      Boolean       @default(true)
+
+  creditMeta    CreditCardMeta?
+  transactions  Transaction[]
+  fixedExpenses FixedExpense[]
+  incomeSources IncomeSource[]
+  installmentPlans InstallmentPlan[] @relation("InstallmentCardAccount")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, type])
+  @@index([userId, countryCode, regionGroup])
+  @@index([userId, isActive])
+}
+
+model CreditCardMeta {
+  accountId     String   @id
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  apr           Decimal? @db.Decimal(7, 4)
+  creditLimit   Decimal? @db.Decimal(18, 2)
+  statementDay  Int?     // 1–31
+  paymentDay    Int?     // 1–31
+  minPaymentRate Decimal? @db.Decimal(5, 4)
+  annualFee     Decimal? @db.Decimal(18, 2)
+  issuer        String?
+}
+
+/* ---------- CATEGORIES & TAGS ---------- */
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  parentId  String?
+  parent    Category? @relation("CategoryToParent", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryToParent")
+
+  type      TxnType  // INCOME or EXPENSE primarily
+  icon      String?
+  color     String?
+
+  createdAt DateTime @default(now())
+
+  transactions      Transaction[]
+  fixedExpenses     FixedExpense[]
+  incomeSources     IncomeSource[]
+  tagRules          TagRule[]
+  extractedLineItems ExtractedLineItem[]
+
+  @@index([userId, type])
+  @@index([userId, parentId])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  slug      String
+  color     String?
+  isSystem  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  txTags    TransactionTag[]
+
+  @@unique([userId, slug])
+  @@index([userId, name])
+}
+
+model TransactionTag {
+  id            String    @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  tagId         String
+  tag           Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  source        TagSource
+  confidence    Float      @default(1.0) // 0–1
+
+  @@unique([transactionId, tagId])
+  @@index([tagId])
+}
+
+/* ---------- TRANSACTIONS ---------- */
+
+model Transaction {
+  id            String   @id @default(cuid())
+
+  accountId     String
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  postedAt      DateTime
+  amount        Decimal  @db.Decimal(18, 2) // + income, - expense
+  currency      String
+
+  description   String
+  merchant      String?
+
+  type          TxnType
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  source        TransactionSource
+  reviewStatus  ReviewStatus @default(NONE)
+
+  installmentPlanId String?
+  installmentPlan   InstallmentPlan? @relation(fields: [installmentPlanId], references: [id], onDelete: SetNull)
+
+  statementDocumentId String?
+  statementDocument   DocumentUpload? @relation(fields: [statementDocumentId], references: [id], onDelete: SetNull)
+
+  externalId     String? // provider txn id
+  raw            Json?   // original payload
+
+  txTags         TransactionTag[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([accountId, postedAt])
+  @@index([accountId, merchant])
+  @@index([categoryId])
+  @@index([source, reviewStatus])
+  @@index([postedAt])
+  @@unique([accountId, externalId])
+}
+
+/* ---------- RECURRING: LIFE COSTS & INCOME ---------- */
+
+model FixedExpense {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String   // kira, terapi, temizlik, elektrik, aidat, etc.
+  amount      Decimal  @db.Decimal(18, 2)
+  currency    String
+
+  period      Period
+  interval    Int?     // for CUSTOM: days, e.g. 14 for 2 haftada bir
+
+  nextDueAt   DateTime
+
+  accountId   String?
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  lifeDomain  String? // "HOUSING", "UTILITIES", "HEALTH", "CLEANING", "BUSINESS", etc.
+  countryCode String?
+
+  isActive    Boolean @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@index([nextDueAt])
+}
+
+model IncomeSource {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name           String   // salary, freelance, rent, etc.
+  amount         Decimal  @db.Decimal(18, 2)
+  currency       String
+
+  period         Period
+  interval       Int?
+
+  nextExpectedAt DateTime
+
+  variability    Decimal? @db.Decimal(5, 4) // % variability (0–1)
+
+  accountId      String?
+  account        Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  categoryId     String?
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  countryCode    String?
+
+  isActive       Boolean @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@index([nextExpectedAt])
+}
+
+/* ---------- INSTALLMENTS (TAKSITLER) ---------- */
+
+model InstallmentPlan {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cardAccountId  String
+  cardAccount    Account  @relation("InstallmentCardAccount", fields: [cardAccountId], references: [id], onDelete: Cascade)
+
+  originalTransactionId String?
+  originalTransaction   Transaction?
+
+  merchant       String?
+  description    String?
+
+  totalAmount    Decimal  @db.Decimal(18, 2)
+  numInstallments Int
+  installmentAmount Decimal @db.Decimal(18, 2)
+
+  firstDueAt     DateTime
+  frequencyDays  Int       @default(30) // typically 30
+
+  remainingInstallments Int
+  tags          String[]   // quick tags (optional)
+
+  source        String     // "BANK", "PDF", "MANUAL", "AI_GUESS"
+  confidence    Float      @default(1.0)
+  reviewStatus  InstallmentReviewStatus @default(OK)
+
+  transactions  Transaction[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, cardAccountId])
+  @@index([firstDueAt])
+}
+
+/* ---------- NET WORTH & PREDICTIONS ---------- */
+
+model NetWorthSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  takenAt     DateTime @default(now())
+
+  assetCash        Decimal @db.Decimal(18, 2)
+  assetInvestments Decimal @db.Decimal(18, 2)
+  assetReceivables Decimal @db.Decimal(18, 2)
+
+  liabilityCreditCards Decimal @db.Decimal(18, 2)
+  liabilityLoans       Decimal @db.Decimal(18, 2)
+
+  assets      Decimal @db.Decimal(18, 2)
+  liabilities Decimal @db.Decimal(18, 2)
+  netWorth    Decimal @db.Decimal(18, 2)
+
+  @@index([userId, takenAt])
+  @@unique([userId, takenAt])
+}
+
+model Prediction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  horizon   Int      // months, e.g. 12
+  createdAt DateTime @default(now())
+
+  series    Json     // [{ date, netWorth, baseNetWorth, overlayCashflow, lower, upper }]
+
+  @@index([userId, createdAt])
+}
+
+/* ---------- DOCUMENTS & IMPORTS (GEMINI 2.5) ---------- */
+
+model DocumentUpload {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  storagePath  String         // path in storage bucket
+  fileType     String         // "PDF" | "IMAGE"
+  fileName     String
+  fileSize     Int?
+  status       DocumentStatus @default(UPLOADED)
+  sourceType   ImportSourceType @default(UPLOAD)
+  sourceHint   String?
+
+  uploadedAt   DateTime @default(now())
+  processedAt  DateTime?
+  errorMessage String?
+
+  modelUsed    String?     // e.g. "gemini-2.5-flash"
+
+  extractedItems ExtractedLineItem[]
+  transactions    Transaction[]
+
+  @@index([userId, status])
+  @@index([uploadedAt])
+}
+
+model ExtractedLineItem {
+  id           String          @id @default(cuid())
+  documentId   String
+  document     DocumentUpload  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  lineIndex    Int
+  rawText      String?
+
+  date         DateTime?
+  amount       Decimal?        @db.Decimal(18, 2)
+  currency     String?
+  merchant     String?
+  description  String?
+
+  suggestedCategoryId String?
+  suggestedCategory   Category? @relation(fields: [suggestedCategoryId], references: [id], onDelete: SetNull)
+
+  suggestedTagNames   String[]  // names of tags from AI
+  confidence          Float     @default(0.0) // 0–1
+
+  linkedTransactionId String?
+  linkedTransaction   Transaction? @relation(fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+
+  status       ExtractedStatus @default(PENDING_REVIEW)
+
+  createdAt    DateTime @default(now())
+
+  @@index([documentId, status])
+  @@index([status])
+}
+
+/* ---------- TAG RULES / LEARNING ---------- */
+
+model TagRule {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pattern      String   // e.g. normalized merchant or regex
+  patternType  String   // "MERCHANT_CONTAINS", "MERCHANT_EQUALS", "REGEX", etc.
+
+  tagIds       String[] // Tag IDs to apply
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  confidenceBoost Float  @default(0.0)
+  createdFromTransactionId String?
+
+  priority     Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, pattern])
+  @@index([userId, active])
+}
+
+/* ---------- EXCHANGE RATES (MANUAL ENTRY) ---------- */
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  userId    String?  // null for system-wide rates
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fromCurrency String
+  toCurrency   String
+  rate         Decimal  @db.Decimal(18, 8)
+  date         DateTime @default(now())
+
+  source       ExchangeRateSource @default(USER)
+  notes        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, fromCurrency, toCurrency, date])
+  @@index([fromCurrency, toCurrency, date])
+  @@index([userId, date])
+}
+
+/* ---------- EXTERNAL API CREDS & WEBHOOKS ---------- */
+
+model ApiCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider     String   // "yapikredi", "qnb", etc.
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  scope        String?
+  meta         Json?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, provider])
+}
+
+model WebhookEvent {
+  id        String   @id
+  provider  String
+  payload   Json
+  processed Boolean  @default(false)
+  seenAt    DateTime @default(now())
+
+  @@index([processed, seenAt])
+}

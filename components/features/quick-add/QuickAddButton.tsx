@@ -3,13 +3,6 @@
 import { useState } from 'react'
 import { Plus, X, Wallet, ArrowLeftRight, CreditCard, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 interface QuickAction {
@@ -32,7 +25,6 @@ export function QuickAddButton({
   onAddTransfer,
   onScanReceipt,
 }: QuickAddButtonProps) {
-  const [isOpen, setIsOpen] = useState(false)
   const [showActions, setShowActions] = useState(false)
 
   const actions: QuickAction[] = [

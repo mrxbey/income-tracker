@@ -36,7 +36,7 @@ export function OptimisticAccountCard({
   account,
   showOptimisticBalance = false,
 }: OptimisticAccountCardProps) {
-  const [optimisticBalance, updateBalance] = useOptimistic(
+  const [optimisticBalance] = useOptimistic(
     account.balance.toString(),
     (state, newAmount: number) => {
       const currentBalance = parseFloat(state)

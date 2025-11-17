@@ -110,6 +110,7 @@ model User {
   installmentPlans  InstallmentPlan[]
   apiCreds          ApiCredential[]
   exchangeRates     ExchangeRate[]
+  budgets           Budget[]
 }
 
 /* ---------- INSTITUTIONS & ACCOUNTS ---------- */
@@ -192,6 +193,7 @@ model Category {
   incomeSources     IncomeSource[]
   tagRules          TagRule[]
   extractedLineItems ExtractedLineItem[]
+  budgets           Budget[]
 
   @@index([userId, type])
   @@index([userId, parentId])
@@ -553,4 +555,31 @@ model WebhookEvent {
   seenAt    DateTime @default(now())
 
   @@index([processed, seenAt])
+}
+
+/* ---------- BUDGETING ---------- */
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  amount     Decimal  @db.Decimal(18, 2) // Monthly budget amount
+  currency   String   @default("USD")
+
+  period     Period   @default(MONTHLY) // Currently only MONTHLY supported
+  startDate  DateTime // When this budget starts (usually first of month)
+  endDate    DateTime? // Optional end date (null = ongoing)
+
+  isActive   Boolean  @default(true)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, categoryId, startDate])
+  @@index([userId, isActive])
+  @@index([startDate, endDate])
 }

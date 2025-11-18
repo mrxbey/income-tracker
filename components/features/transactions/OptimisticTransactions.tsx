@@ -1,6 +1,7 @@
 'use client'
 
 import { useOptimistic, useTransition, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,8 +29,10 @@ export function OptimisticTransactions({
   accounts,
   categories,
 }: OptimisticTransactionsProps) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Optimistic state for instant UI updates
   const [optimisticTransactions, addOptimisticTransaction] = useOptimistic(
@@ -99,13 +102,19 @@ export function OptimisticTransactions({
           }),
         })
 
-        if (!response.ok) throw new Error('Failed to create transaction')
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to create transaction')
+        }
 
-        // Refresh the page to get real data
-        window.location.reload()
-      } catch (error) {
-        console.error('Failed to create transaction:', error)
-        // TODO: Show error toast and revert optimistic update
+        // Refresh server components to get real data (without full page reload)
+        router.refresh()
+        setError(null)
+      } catch (err) {
+        console.error('Failed to create transaction:', err)
+        setError(err instanceof Error ? err.message : 'Failed to create transaction')
+        // Router refresh will revert optimistic update by fetching latest data
+        router.refresh()
       }
     })
   }
@@ -120,13 +129,19 @@ export function OptimisticTransactions({
           method: 'DELETE',
         })
 
-        if (!response.ok) throw new Error('Failed to delete transaction')
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to delete transaction')
+        }
 
-        // Success - optimistic update already done
-      } catch (error) {
-        console.error('Failed to delete transaction:', error)
-        // TODO: Revert optimistic update
-        window.location.reload()
+        // Success - refresh to confirm deletion
+        router.refresh()
+        setError(null)
+      } catch (err) {
+        console.error('Failed to delete transaction:', err)
+        setError(err instanceof Error ? err.message : 'Failed to delete transaction')
+        // Router refresh will revert optimistic update by fetching latest data
+        router.refresh()
       }
     })
   }
@@ -141,6 +156,31 @@ export function OptimisticTransactions({
           Add Transaction
         </Button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-destructive" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-destructive">Error</h3>
+              <p className="text-sm text-destructive/90 mt-1">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="flex-shrink-0 text-destructive hover:text-destructive/80"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Quick Add Form */}
       {showForm && (

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { exchangePublicToken, getAccounts } from '@/lib/services/plaid-service'
 import { db as prisma } from '@/lib/prisma'
 import { AccountType } from '@prisma/client'
+import { encrypt } from '@/lib/crypto'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,12 +46,15 @@ export async function POST(request: NextRequest) {
     const plaidAccounts = await getAccounts(metadata.accessToken)
 
     // Create bank connection in database
+    // Encrypt access token before storing for security
+    const encryptedAccessToken = encrypt(metadata.accessToken)
+
     const connection = await prisma.bankConnection.create({
       data: {
         userId,
         institutionId: metadata.institutionId,
         institutionName: metadata.institutionName,
-        accessToken: metadata.accessToken,
+        accessToken: encryptedAccessToken,
         itemId: metadata.itemId,
         status: 'ACTIVE',
       },

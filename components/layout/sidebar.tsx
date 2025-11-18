@@ -24,9 +24,11 @@ interface SidebarNavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   badge?: string
+  disabled?: boolean
 }
 
 const navItems: SidebarNavItem[] = [
+  // Main Navigation
   {
     title: 'Dashboard',
     href: '/',
@@ -48,49 +50,32 @@ const navItems: SidebarNavItem[] = [
     icon: ArrowLeftRight,
   },
   {
-    title: 'Credit Cards',
-    href: '/cards',
-    icon: CreditCard,
-  },
-  {
-    title: 'Recurring',
-    href: '/recurring',
-    icon: RefreshCw,
-  },
-  {
     title: 'Subscriptions',
     href: '/subscriptions',
     icon: CalendarCheck,
   },
+
+  // Coming Soon Features
   {
     title: 'Tags',
     href: '/tags',
     icon: Tags,
+    badge: 'Soon',
+    disabled: true,
   },
   {
     title: 'Imports',
     href: '/imports',
     icon: Upload,
-  },
-  {
-    title: 'Review Queue',
-    href: '/review',
-    icon: ClipboardList,
-  },
-  {
-    title: 'Forecasts',
-    href: '/forecasts',
-    icon: TrendingUp,
-  },
-  {
-    title: 'Ask AI',
-    href: '/ask',
-    icon: MessageSquare,
+    badge: 'Soon',
+    disabled: true,
   },
   {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
+    badge: 'Soon',
+    disabled: true,
   },
 ]
 
@@ -111,6 +96,28 @@ export function Sidebar() {
           const isActive = pathname === item.href
           const Icon = item.icon
 
+          // Disabled items render as div (not clickable)
+          if (item.disabled) {
+            return (
+              <div
+                key={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                  'text-muted-foreground/50 cursor-not-allowed'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.title}
+                {item.badge && (
+                  <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+            )
+          }
+
+          // Active items render as Link
           return (
             <Link
               key={item.href}

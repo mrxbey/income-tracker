@@ -129,6 +129,9 @@ export const transactionService = {
 
   /**
    * Create a new transaction
+   *
+   * Uses database transaction to prevent race conditions in balance updates.
+   * Atomically creates transaction and updates account balance.
    */
   async create(userId: string, data: CreateTransactionInput) {
     // Verify account ownership
@@ -145,47 +148,54 @@ export const transactionService = {
 
     const { tagIds, ...transactionData } = data
 
-    const transaction = await db.transaction.create({
-      data: {
-        ...transactionData,
-        amount: data.amount.toString(),
-        postedAt: new Date(data.postedAt),
-        ...(tagIds &&
-          tagIds.length > 0 && {
-            txTags: {
-              create: tagIds.map((tagId) => ({
-                tagId,
-                source: 'USER',
-                confidence: 1.0,
-              })),
+    // Use database transaction to prevent race conditions
+    const transaction = await db.$transaction(async (tx) => {
+      // Create transaction
+      const newTransaction = await tx.transaction.create({
+        data: {
+          ...transactionData,
+          amount: data.amount.toString(),
+          postedAt: new Date(data.postedAt),
+          ...(tagIds &&
+            tagIds.length > 0 && {
+              txTags: {
+                create: tagIds.map((tagId) => ({
+                  tagId,
+                  source: 'USER',
+                  confidence: 1.0,
+                })),
+              },
+            }),
+        },
+        include: {
+          account: {
+            select: {
+              id: true,
+              name: true,
+              currency: true,
+              type: true,
             },
-          }),
-      },
-      include: {
-        account: {
-          select: {
-            id: true,
-            name: true,
-            currency: true,
-            type: true,
+          },
+          category: true,
+          txTags: {
+            include: {
+              tag: true,
+            },
           },
         },
-        category: true,
-        txTags: {
-          include: {
-            tag: true,
+      })
+
+      // Atomically update account balance using increment
+      await tx.account.update({
+        where: { id: data.accountId },
+        data: {
+          balance: {
+            increment: newTransaction.amount,
           },
         },
-      },
-    })
+      })
 
-    // Update account balance
-    const newBalance =
-      parseFloat(account.balance.toString()) + parseFloat(transaction.amount.toString())
-
-    await db.account.update({
-      where: { id: data.accountId },
-      data: { balance: newBalance.toString() },
+      return newTransaction
     })
 
     return transaction
@@ -193,20 +203,83 @@ export const transactionService = {
 
   /**
    * Update a transaction
+   *
+   * If amount is updated, uses database transaction to atomically update
+   * transaction and adjust account balance by the difference.
    */
   async update(userId: string, transactionId: string, data: UpdateTransactionInput) {
     // Verify ownership
-    await this.getById(userId, transactionId)
+    const existingTransaction = await this.getById(userId, transactionId)
 
     const { tagIds, ...transactionData } = data
 
+    // If amount is being updated, we need to adjust the account balance
+    if (data.amount !== undefined) {
+      const oldAmount = parseFloat(existingTransaction.amount.toString())
+      const newAmount = parseFloat(data.amount.toString())
+      const amountDifference = newAmount - oldAmount
+
+      // Use database transaction to prevent race conditions
+      return db.$transaction(async (tx) => {
+        // Update transaction
+        const updatedTransaction = await tx.transaction.update({
+          where: {
+            id: transactionId,
+          },
+          data: {
+            ...transactionData,
+            amount: data.amount.toString(),
+            ...(data.postedAt && { postedAt: new Date(data.postedAt) }),
+            ...(tagIds !== undefined && {
+              txTags: {
+                deleteMany: {},
+                create: tagIds.map((tagId) => ({
+                  tagId,
+                  source: 'USER',
+                  confidence: 1.0,
+                })),
+              },
+            }),
+          },
+          include: {
+            account: {
+              select: {
+                id: true,
+                name: true,
+                currency: true,
+                type: true,
+              },
+            },
+            category: true,
+            txTags: {
+              include: {
+                tag: true,
+              },
+            },
+          },
+        })
+
+        // Atomically adjust account balance by the difference
+        await tx.account.update({
+          where: { id: existingTransaction.accountId },
+          data: {
+            balance: {
+              increment: amountDifference,
+            },
+          },
+        })
+
+        return updatedTransaction
+      })
+    }
+
+    // If amount is not being updated, simple update without balance adjustment
     return db.transaction.update({
       where: {
         id: transactionId,
       },
       data: {
         ...transactionData,
-        ...(data.amount !== undefined && { amount: data.amount.toString() }),
         ...(data.postedAt && { postedAt: new Date(data.postedAt) }),
         ...(tagIds !== undefined && {
           txTags: {
@@ -240,30 +313,32 @@ export const transactionService = {
 
   /**
    * Delete a transaction
+   *
+   * Uses database transaction to prevent race conditions in balance updates.
+   * Atomically deletes transaction and updates account balance.
    */
   async delete(userId: string, transactionId: string) {
     // Verify ownership
     const transaction = await this.getById(userId, transactionId)
 
-    // Update account balance
-    const account = await db.account.findUnique({
-      where: { id: transaction.accountId },
-    })
-
-    if (account) {
-      const newBalance =
-        parseFloat(account.balance.toString()) - parseFloat(transaction.amount.toString())
-
-      await db.account.update({
+    // Use database transaction to prevent race conditions
+    return db.$transaction(async (tx) => {
+      // Atomically update account balance using decrement
+      await tx.account.update({
         where: { id: transaction.accountId },
-        data: { balance: newBalance.toString() },
+        data: {
+          balance: {
+            decrement: transaction.amount,
+          },
+        },
       })
-    }
 
-    return db.transaction.delete({
-      where: {
-        id: transactionId,
-      },
+      // Delete the transaction
+      return tx.transaction.delete({
+        where: {
+          id: transactionId,
+        },
+      })
     })
   },
 }

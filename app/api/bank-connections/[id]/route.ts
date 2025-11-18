@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db as prisma } from '@/lib/prisma'
 import { removeItem } from '@/lib/services/plaid-service'
+import { decrypt } from '@/lib/crypto'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -38,9 +39,12 @@ export async function DELETE(
       )
     }
 
+    // Decrypt access token before using it
+    const accessToken = decrypt(connection.accessToken)
+
     // Remove from Plaid
     try {
-      await removeItem(connection.accessToken)
+      await removeItem(accessToken)
     } catch (error) {
       console.error('Error removing Plaid item:', error)
       // Continue with database deletion even if Plaid removal fails

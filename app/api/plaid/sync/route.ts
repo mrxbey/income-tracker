@@ -4,6 +4,7 @@ import { syncTransactions } from '@/lib/services/plaid-service'
 import { db as prisma } from '@/lib/prisma'
 import { TxnType } from '@prisma/client'
 import { Decimal } from 'decimal.js'
+import { decrypt } from '@/lib/crypto'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,8 +46,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Decrypt access token before using it
+    const accessToken = decrypt(connection.accessToken)
+
     // Sync transactions from Plaid
-    const plaidTransactions = await syncTransactions(connection.accessToken)
+    const plaidTransactions = await syncTransactions(accessToken)
 
     // Get accounts for this connection
     const accounts = await prisma.account.findMany({

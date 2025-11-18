@@ -8,6 +8,8 @@ import {
   ArrowLeftRight,
   CreditCard,
   RefreshCw,
+  CalendarCheck,
+  Building2,
   Tags,
   Upload,
   ClipboardList,
@@ -36,6 +38,11 @@ const navItems: SidebarNavItem[] = [
     icon: Wallet,
   },
   {
+    title: 'Bank Connections',
+    href: '/bank-connections',
+    icon: Building2,
+  },
+  {
     title: 'Transactions',
     href: '/transactions',
     icon: ArrowLeftRight,
@@ -49,6 +56,11 @@ const navItems: SidebarNavItem[] = [
     title: 'Recurring',
     href: '/recurring',
     icon: RefreshCw,
+  },
+  {
+    title: 'Subscriptions',
+    href: '/subscriptions',
+    icon: CalendarCheck,
   },
   {
     title: 'Tags',

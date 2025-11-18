@@ -54,17 +54,23 @@ describe('ExportDataDialog', () => {
     // Open dialog
     fireEvent.click(screen.getByText('Export Data'))
 
+    // Wait for dialog to be fully open
     await waitFor(() => {
-      const exportButtons = screen.queryAllByText('Export')
-      if (exportButtons.length > 1) {
-        fireEvent.click(exportButtons[1]!) // Second "Export" is the action button
-      }
-    })
+      expect(screen.getByText(/Export your financial data/i)).toBeInTheDocument()
+    }, { timeout: 5000 })
+
+    // Find and click the export button within the dialog (inside the DialogFooter)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^Export$/i })).toBeInTheDocument()
+    }, { timeout: 5000 })
+
+    const exportButton = screen.getByRole('button', { name: /^Export$/i })
+    fireEvent.click(exportButton)
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled()
-    })
-  })
+    }, { timeout: 5000 })
+  }, 10000)
 
   it('should show date filters for transactions export', async () => {
     render(<ExportDataDialog />)
@@ -92,15 +98,21 @@ describe('ExportDataDialog', () => {
 
     fireEvent.click(screen.getByText('Export Data'))
 
+    // Wait for dialog to be fully open
     await waitFor(() => {
-      const exportButtons = screen.queryAllByText('Export')
-      if (exportButtons.length > 1) {
-        fireEvent.click(exportButtons[1]!)
-      }
-    })
+      expect(screen.getByText(/Export your financial data/i)).toBeInTheDocument()
+    }, { timeout: 5000 })
+
+    // Find and click the export button (inside the DialogFooter)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^Export$/i })).toBeInTheDocument()
+    }, { timeout: 5000 })
+
+    const exportButton = screen.getByRole('button', { name: /^Export$/i })
+    fireEvent.click(exportButton)
 
     await waitFor(() => {
       expect(screen.getByText(/failed to export data/i)).toBeInTheDocument()
-    })
-  })
+    }, { timeout: 5000 })
+  }, 10000)
 })

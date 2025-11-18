@@ -69,6 +69,7 @@ export function OptimisticTransactions({
         : null,
       source: 'MANUAL' as any,
       reviewStatus: 'NONE' as any,
+      isPending: false,
       installmentPlanId: null,
       statementDocumentId: null,
       externalId: null,

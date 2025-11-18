@@ -2,22 +2,69 @@ import { describe, it, expect, vi } from 'vitest'
 import { categorizeTransaction, categorizeBatch } from '@/lib/ai/gemini-categorization'
 
 // Mock the Google Generative AI
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
-    getGenerativeModel: vi.fn().mockReturnValue({
-      generateContent: vi.fn().mockResolvedValue({
-        response: {
-          text: () => JSON.stringify({
-            category: 'Groceries',
-            tags: ['groceries', 'food'],
-            confidence: 0.95,
-            reasoning: 'Transaction at a grocery store'
+vi.mock('@google/generative-ai', () => {
+  return {
+    GoogleGenerativeAI: class MockGoogleGenerativeAI {
+      constructor(_apiKey: string) {}
+      getGenerativeModel() {
+        return {
+          generateContent: vi.fn().mockImplementation(async (prompt: any) => {
+            const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt)
+
+            // Dynamic responses based on merchant/description
+            let category = 'Groceries'
+            let tags = ['groceries', 'food']
+            let confidence = 0.95
+            let reasoning = 'Transaction at a grocery store'
+
+            if (promptText.includes('Uber')) {
+              category = 'Transportation'
+              tags = ['transport', 'ride']
+              confidence = 0.92
+              reasoning = 'Ride sharing service'
+            } else if (promptText.includes('Amazon')) {
+              category = 'Shopping'
+              tags = ['shopping', 'online']
+              confidence = 0.88
+              reasoning = 'Online shopping'
+            } else if (promptText.includes('Starbucks')) {
+              category = 'Dining'
+              tags = ['coffee', 'dining']
+              confidence = 0.90
+              reasoning = 'Coffee shop'
+            } else if (promptText.includes('ELECTRIC') || promptText.includes('Electric Company')) {
+              category = 'Utilities'
+              tags = ['utilities', 'bills']
+              confidence = 0.93
+              reasoning = 'Utility bill payment'
+            } else if (promptText.includes('Unknown Merchant') || promptText.includes('Payment') && !promptText.includes('ELECTRIC')) {
+              category = 'Shopping'
+              tags = ['general']
+              confidence = 0.45
+              reasoning = 'Ambiguous transaction'
+            } else if (promptText.includes('Carrefour')) {
+              category = 'Groceries'
+              tags = ['groceries', 'supermarket']
+              confidence = 0.91
+              reasoning = 'Supermarket transaction'
+            }
+
+            return {
+              response: {
+                text: () => JSON.stringify({
+                  category,
+                  tags,
+                  confidence,
+                  reasoning
+                })
+              }
+            }
           })
         }
-      })
-    })
-  }))
-}))
+      }
+    }
+  }
+})
 
 describe('AI Categorization', () => {
   const availableCategories = ['Groceries', 'Dining', 'Transportation', 'Shopping', 'Utilities']

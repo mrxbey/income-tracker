@@ -4,12 +4,25 @@ import { NextRequest } from 'next/server'
 import { db as prisma } from '@/lib/prisma'
 import Decimal from 'decimal.js'
 
-vi.mock('@/lib/prisma')
-vi.mock('@clerk/nextjs/server')
+vi.mock('@/lib/prisma', () => ({
+  db: {
+    budget: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+    },
+  },
+}))
+
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn().mockResolvedValue({ userId: 'user-1' }),
+}))
 
 describe('Budget API Routes', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    // Reset auth mock to default
+    const { auth } = await import('@clerk/nextjs/server')
+    vi.mocked(auth).mockResolvedValue({ userId: 'user-1' } as any)
   })
 
   describe('GET /api/budgets', () => {
@@ -34,15 +47,15 @@ describe('Budget API Routes', () => {
         },
       ]
 
-      vi.mocked(prisma.budget.findMany).mockResolvedValue(mockBudgets as any)
+      prisma.budget.findMany = vi.fn().mockResolvedValue(mockBudgets)
 
       const request = new NextRequest('http://localhost:3000/api/budgets')
       const response = await GET(request)
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data).toHaveLength(1)
-      expect(data[0].id).toBe('budget-1')
+      expect(data.budgets).toHaveLength(1)
+      expect(data.budgets[0].id).toBe('budget-1')
     })
 
     it('should return 401 if user not authenticated', async () => {
@@ -78,7 +91,7 @@ describe('Budget API Routes', () => {
         updatedAt: new Date(),
       }
 
-      vi.mocked(prisma.budget.create).mockResolvedValue(mockCreatedBudget as any)
+      prisma.budget.create = vi.fn().mockResolvedValue(mockCreatedBudget)
 
       const request = new NextRequest('http://localhost:3000/api/budgets', {
         method: 'POST',
@@ -89,7 +102,7 @@ describe('Budget API Routes', () => {
       const data = await response.json()
 
       expect(response.status).toBe(201)
-      expect(data.id).toBe('budget-1')
+      expect(data.budget.id).toBe('budget-1')
       expect(prisma.budget.create).toHaveBeenCalled()
     })
 

@@ -4,6 +4,7 @@ import { exchangePublicToken, getAccounts } from '@/lib/services/plaid-service'
 import { db as prisma } from '@/lib/prisma'
 import { AccountType } from '@prisma/client'
 import { encrypt } from '@/lib/crypto'
+import { applyRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,8 +21,16 @@ function mapPlaidAccountType(plaidType: string): AccountType {
 /**
  * POST /api/plaid/exchange-token
  * Exchange a Plaid public token for an access token and create bank accounts
+ *
+ * Rate limited: 10 requests per minute (expensive external API call)
  */
 export async function POST(request: NextRequest) {
+  // Apply rate limiting (expensive Plaid API calls)
+  const rateLimitResult = applyRateLimit(request, 'EXPENSIVE')
+  if (!rateLimitResult.success) {
+    return rateLimitResult.response
+  }
+
   try {
     const { userId } = await auth()
 
@@ -90,6 +99,8 @@ export async function POST(request: NextRequest) {
         type: account.type,
         balance: account.balance,
       })),
+    }, {
+      headers: getRateLimitHeaders('EXPENSIVE', rateLimitResult.remaining, rateLimitResult.reset),
     })
   } catch (error) {
     console.error('Error in exchange-token POST route:', error)

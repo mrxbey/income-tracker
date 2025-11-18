@@ -1,6 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { AddBankAccountDialog } from '@/components/features/accounts/AddBankAccountDialog'
+import { AccountsList } from '@/components/features/accounts/AccountsList'
+import { Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
 
 export default async function AccountsPage() {
   return (
@@ -10,25 +12,38 @@ export default async function AccountsPage() {
           <h2 className="text-3xl font-bold tracking-tight">Accounts</h2>
           <p className="text-muted-foreground">Manage your bank accounts, cards, and investments</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Account
-        </Button>
+        <AddBankAccountDialog />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>No accounts yet</CardTitle>
-            <CardDescription>Add your first account to get started</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Connect your bank accounts, credit cards, loans, and investment accounts to track your net worth.
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <AccountsList />
+      </Suspense>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Getting Started</CardTitle>
+          <CardDescription>Learn how to manage your accounts</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              <strong>1. Add accounts:</strong> Click "Add Account" to create a new bank account, credit card, or investment account
             </p>
-          </CardContent>
-        </Card>
-      </div>
+            <p>
+              <strong>2. Import transactions:</strong> Use the "Import CSV/JSON" button on each account to bulk import transactions
+            </p>
+            <p>
+              <strong>3. Track balances:</strong> Your account balances update automatically as you add transactions
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

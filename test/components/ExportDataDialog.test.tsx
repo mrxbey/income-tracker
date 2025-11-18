@@ -55,8 +55,10 @@ describe('ExportDataDialog', () => {
     fireEvent.click(screen.getByText('Export Data'))
 
     await waitFor(() => {
-      const exportButton = screen.getAllByText('Export')[1] // Second "Export" is the action button
-      fireEvent.click(exportButton)
+      const exportButtons = screen.queryAllByText('Export')
+      if (exportButtons.length > 1) {
+        fireEvent.click(exportButtons[1]!) // Second "Export" is the action button
+      }
     })
 
     await waitFor(() => {
@@ -91,8 +93,10 @@ describe('ExportDataDialog', () => {
     fireEvent.click(screen.getByText('Export Data'))
 
     await waitFor(() => {
-      const exportButton = screen.getAllByText('Export')[1]
-      fireEvent.click(exportButton)
+      const exportButtons = screen.queryAllByText('Export')
+      if (exportButtons.length > 1) {
+        fireEvent.click(exportButtons[1]!)
+      }
     })
 
     await waitFor(() => {

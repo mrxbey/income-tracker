@@ -94,7 +94,7 @@ describe('NotificationsPanel', () => {
     }
 
     let callCount = 0
-    const mockFetch = vi.fn((url: string, options?: any) => {
+    const mockFetch = vi.fn((_url: string, options?: any) => {
       callCount++
 
       // First call: GET notifications
@@ -188,7 +188,7 @@ describe('NotificationsPanel', () => {
     }
 
     let callCount = 0
-    const mockFetch = vi.fn((url: string, options?: any) => {
+    const mockFetch = vi.fn((_url: string, options?: any) => {
       callCount++
 
       if (callCount === 1) {

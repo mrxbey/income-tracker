@@ -7,10 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Trash2, Edit, Plus, TrendingUp, TrendingDown } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Trash2, Edit, Plus, TrendingUp, TrendingDown, Split } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Transaction, Account, Category, TxnType, TransactionSource, ReviewStatus } from '@prisma/client'
 import { z } from 'zod'
+import { SplitTransactionEditor } from './SplitTransactionEditor'
 
 // Form validation schema
 const transactionFormSchema = z.object({
@@ -46,6 +54,7 @@ export function OptimisticTransactions({
   const [isPending, startTransition] = useTransition()
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [splittingTransaction, setSplittingTransaction] = useState<TransactionWithRelations | null>(null)
 
   // Define optimistic action types
   type OptimisticAction =
@@ -400,9 +409,19 @@ export function OptimisticTransactions({
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => setSplittingTransaction(transaction)}
+                      disabled={transaction.id.startsWith('temp-')}
+                      title="Split transaction"
+                    >
+                      <Split className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => {
                         // TODO: Implement edit
                       }}
+                      title="Edit transaction"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -411,6 +430,7 @@ export function OptimisticTransactions({
                       size="icon"
                       onClick={() => handleDeleteTransaction(transaction.id)}
                       disabled={transaction.id.startsWith('temp-')}
+                      title="Delete transaction"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -427,6 +447,50 @@ export function OptimisticTransactions({
           Syncing with server...
         </div>
       )}
+
+      {/* Split Transaction Dialog */}
+      <Dialog open={!!splittingTransaction} onOpenChange={() => setSplittingTransaction(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Split Transaction</DialogTitle>
+            <DialogDescription>
+              Divide this transaction across multiple categories
+            </DialogDescription>
+          </DialogHeader>
+          {splittingTransaction && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{splittingTransaction.description}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {splittingTransaction.merchant && `${splittingTransaction.merchant} • `}
+                      {splittingTransaction.account.name} • {formatDate(splittingTransaction.postedAt)}
+                    </div>
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {formatCurrency(
+                      Math.abs(Number(splittingTransaction.amount)),
+                      splittingTransaction.currency
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <SplitTransactionEditor
+                transactionId={splittingTransaction.id}
+                transactionAmount={Number(splittingTransaction.amount)}
+                currency={splittingTransaction.currency}
+                categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+                onComplete={() => {
+                  setSplittingTransaction(null)
+                  router.refresh()
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

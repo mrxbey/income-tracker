@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { SubscriptionCard } from '@/components/features/subscriptions/SubscriptionCard'
 import { SubscriptionStats } from '@/components/features/subscriptions/SubscriptionStats'
 import { CalendarExportDialog } from '@/components/features/calendar/CalendarExportDialog'
+import { FixedExpenseList } from '@/components/features/expenses/FixedExpenseList'
+import { InstallmentPlanTracker } from '@/components/features/installments/InstallmentPlanTracker'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -131,9 +134,9 @@ export default function SubscriptionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Subscriptions</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Subscriptions & Fixed Expenses</h2>
           <p className="text-muted-foreground">
-            Track and manage your recurring subscriptions
+            Track and manage your recurring subscriptions and fixed expenses
           </p>
         </div>
         <div className="flex gap-2">
@@ -170,64 +173,92 @@ export default function SubscriptionsPage() {
       {/* Stats */}
       {stats && <SubscriptionStats stats={stats} />}
 
-      {/* Filters */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">Filter:</span>
-        <div className="flex gap-2">
-          <Badge
-            variant={filter === 'all' ? 'default' : 'outline'}
-            className="cursor-pointer"
-            onClick={() => setFilter('all')}
-          >
-            All ({subscriptions.length})
-          </Badge>
-          <Badge
-            variant={filter === 'active' ? 'default' : 'outline'}
-            className="cursor-pointer"
-            onClick={() => setFilter('active')}
-          >
-            Active ({subscriptions.filter((s) => s.status === 'active').length})
-          </Badge>
-          <Badge
-            variant={filter === 'trial' ? 'default' : 'outline'}
-            className="cursor-pointer"
-            onClick={() => setFilter('trial')}
-          >
-            Trial ({subscriptions.filter((s) => s.status === 'trial').length})
-          </Badge>
-          <Badge
-            variant={filter === 'unused' ? 'default' : 'outline'}
-            className="cursor-pointer"
-            onClick={() => setFilter('unused')}
-          >
-            Unused ({subscriptions.filter((s) => (s.usageScore || 0) < 20).length})
-          </Badge>
-        </div>
-      </div>
+      {/* Tabs for Subscriptions vs Fixed Expenses vs Installments */}
+      <Tabs defaultValue="subscriptions" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="subscriptions">
+            Auto-Detected Subscriptions ({subscriptions.length})
+          </TabsTrigger>
+          <TabsTrigger value="fixed-expenses">
+            Fixed Expenses
+          </TabsTrigger>
+          <TabsTrigger value="installments">
+            Installment Plans
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Subscriptions grid */}
-      {filteredSubscriptions.length === 0 ? (
-        <div className="text-center py-12">
-          <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No subscriptions found</h3>
-          <p className="text-sm text-muted-foreground mt-2">
-            {filter === 'all'
-              ? 'Start adding transactions to automatically detect subscriptions'
-              : `No ${filter} subscriptions found`}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredSubscriptions.map((subscription) => (
-            <SubscriptionCard
-              key={subscription.id}
-              subscription={subscription}
-              onManage={handleManage}
-              onCancel={handleCancel}
-            />
-          ))}
-        </div>
-      )}
+        {/* Auto-Detected Subscriptions Tab */}
+        <TabsContent value="subscriptions" className="space-y-4">
+          {/* Filters */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Filter:</span>
+            <div className="flex gap-2">
+              <Badge
+                variant={filter === 'all' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setFilter('all')}
+              >
+                All ({subscriptions.length})
+              </Badge>
+              <Badge
+                variant={filter === 'active' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setFilter('active')}
+              >
+                Active ({subscriptions.filter((s) => s.status === 'active').length})
+              </Badge>
+              <Badge
+                variant={filter === 'trial' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setFilter('trial')}
+              >
+                Trial ({subscriptions.filter((s) => s.status === 'trial').length})
+              </Badge>
+              <Badge
+                variant={filter === 'unused' ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setFilter('unused')}
+              >
+                Unused ({subscriptions.filter((s) => (s.usageScore || 0) < 20).length})
+              </Badge>
+            </div>
+          </div>
+
+          {/* Subscriptions grid */}
+          {filteredSubscriptions.length === 0 ? (
+            <div className="text-center py-12">
+              <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No subscriptions found</h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {filter === 'all'
+                  ? 'Start adding transactions to automatically detect subscriptions'
+                  : `No ${filter} subscriptions found`}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredSubscriptions.map((subscription) => (
+                <SubscriptionCard
+                  key={subscription.id}
+                  subscription={subscription}
+                  onManage={handleManage}
+                  onCancel={handleCancel}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Fixed Expenses Tab */}
+        <TabsContent value="fixed-expenses">
+          <FixedExpenseList />
+        </TabsContent>
+
+        {/* Installment Plans Tab */}
+        <TabsContent value="installments">
+          <InstallmentPlanTracker />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

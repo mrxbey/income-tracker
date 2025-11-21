@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { Bell, Keyboard, Menu } from 'lucide-react'
+import { Bell, Keyboard, Menu, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { NotificationsPanel } from '@/components/features/notifications/NotificationsPanel'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { CommandPalette } from '@/components/features/search/CommandPalette'
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -32,6 +33,20 @@ export function Header({ onMobileMenuClick }: HeaderProps = {}) {
   const router = useRouter()
   const title = pageTitles[pathname] || 'Dashboard'
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+
+  // Listen for ⌘K / Ctrl+K to open command palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowCommandPalette(true)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   return (
     <header className="border-b bg-background">
@@ -51,6 +66,28 @@ export function Header({ onMobileMenuClick }: HeaderProps = {}) {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Search/Command Palette */}
+          <Button
+            variant="outline"
+            className="hidden md:flex w-64 justify-start text-muted-foreground"
+            onClick={() => setShowCommandPalette(true)}
+          >
+            <Search className="mr-2 h-4 w-4" />
+            Search...
+            <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setShowCommandPalette(true)}
+            aria-label="Search"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -73,6 +110,13 @@ export function Header({ onMobileMenuClick }: HeaderProps = {}) {
         </div>
       </div>
 
+      {/* Command Palette Dialog */}
+      <Dialog open={showCommandPalette} onOpenChange={setShowCommandPalette}>
+        <DialogContent className="max-w-2xl p-0">
+          <CommandPalette onClose={() => setShowCommandPalette(false)} />
+        </DialogContent>
+      </Dialog>
+
       {/* Keyboard Shortcuts Dialog */}
       <Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
         <DialogContent className="max-w-2xl">
@@ -89,6 +133,7 @@ export function Header({ onMobileMenuClick }: HeaderProps = {}) {
             <div>
               <h3 className="mb-3 font-semibold">Navigation</h3>
               <div className="space-y-2">
+                <ShortcutRow keys={['⌘', 'K']} description="Open Command Palette" />
                 <ShortcutRow keys={['G', 'D']} description="Go to Dashboard" />
                 <ShortcutRow keys={['G', 'T']} description="Go to Transactions" />
                 <ShortcutRow keys={['G', 'A']} description="Go to Accounts" />

@@ -16,6 +16,7 @@ import {
   TrendingUp,
   MessageSquare,
   Settings,
+  FileBarChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -65,6 +66,11 @@ const navItems: SidebarNavItem[] = [
     title: 'Goals',
     href: '/goals',
     icon: TrendingUp,
+  },
+  {
+    title: 'Reports',
+    href: '/reports',
+    icon: FileBarChart,
   },
   {
     title: 'Tags',

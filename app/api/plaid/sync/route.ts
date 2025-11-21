@@ -106,7 +106,10 @@ export async function POST(request: NextRequest) {
       })
     )
 
-    const validTransactions = transactions.filter((txn) => txn !== null)
+    // Use type guard to filter out null transactions and properly narrow types
+    const validTransactions = transactions.filter(
+      (txn): txn is NonNullable<typeof txn> => txn !== null
+    )
 
     // Update connection last sync time
     await prisma.bankConnection.update({
@@ -118,10 +121,10 @@ export async function POST(request: NextRequest) {
       {
         synced: validTransactions.length,
         transactions: validTransactions.map((txn) => ({
-          id: txn!.id,
-          description: txn!.description,
-          amount: txn!.amount,
-          date: txn!.postedAt,
+          id: txn.id,
+          description: txn.description,
+          amount: txn.amount,
+          date: txn.postedAt,
         })),
       },
       {

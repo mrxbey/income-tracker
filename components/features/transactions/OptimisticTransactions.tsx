@@ -9,7 +9,20 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Trash2, Edit, Plus, TrendingUp, TrendingDown } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Transaction, Account, Category } from '@prisma/client'
+import type { Transaction, Account, Category, TxnType, TransactionSource, ReviewStatus } from '@prisma/client'
+import { z } from 'zod'
+
+// Form validation schema
+const transactionFormSchema = z.object({
+  accountId: z.string().min(1, 'Account is required'),
+  amount: z.string().min(1, 'Amount is required').transform((val) => parseFloat(val)),
+  description: z.string().min(1, 'Description is required'),
+  merchant: z.string().optional(),
+  type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER'] as const),
+  categoryId: z.string().optional(),
+})
+
+type TransactionFormData = z.infer<typeof transactionFormSchema>
 
 interface TransactionWithRelations extends Transaction {
   account: Pick<Account, 'id' | 'name' | 'currency'>
@@ -34,94 +47,125 @@ export function OptimisticTransactions({
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Define optimistic action types
+  type OptimisticAction =
+    | { type: 'add'; transaction: TransactionWithRelations }
+    | { type: 'delete'; id: string }
+
   // Optimistic state for instant UI updates
   const [optimisticTransactions, addOptimisticTransaction] = useOptimistic(
     initialTransactions,
-    (state, newTransaction: TransactionWithRelations | { id: string; action: 'delete' }) => {
-      if ('action' in newTransaction && newTransaction.action === 'delete') {
-        return state.filter((t) => t.id !== newTransaction.id)
+    (state, action: OptimisticAction) => {
+      if (action.type === 'delete') {
+        return state.filter((t) => t.id !== action.id)
       }
-      return [newTransaction as TransactionWithRelations, ...state]
+      return [action.transaction, ...state]
     }
   )
 
   async function handleCreateTransaction(formData: FormData) {
-    const selectedAccountId = formData.get('accountId') as string
-    const account = accounts.find((a) => a.id === selectedAccountId)!
-    const selectedCategoryId = formData.get('categoryId') as string
-    const category = categories.find((c) => c.id === selectedCategoryId) || null
-
-    // Optimistic transaction (temporary ID)
-    const optimisticTxn: TransactionWithRelations = {
-      id: `temp-${Date.now()}`,
-      accountId: selectedAccountId,
-      account: {
-        id: account.id,
-        name: account.name,
-        currency: account.currency,
-      },
-      postedAt: new Date(),
-      amount: formData.get('amount') as any,
-      currency: account.currency,
-      description: formData.get('description') as string,
-      merchant: formData.get('merchant') as string | null,
-      type: formData.get('type') as any,
-      categoryId: selectedCategoryId || null,
-      category: category
-        ? { id: category.id, name: category.name }
-        : null,
-      source: 'MANUAL' as any,
-      reviewStatus: 'NONE' as any,
-      isPending: false,
-      installmentPlanId: null,
-      statementDocumentId: null,
-      externalId: null,
-      raw: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    // Add optimistically
-    addOptimisticTransaction(optimisticTxn)
-    setShowForm(false)
-
-    // Actually create transaction
-    startTransition(async () => {
-      try {
-        const response = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accountId: selectedAccountId,
-            amount: parseFloat(formData.get('amount') as string),
-            description: formData.get('description'),
-            merchant: formData.get('merchant') || undefined,
-            type: formData.get('type'),
-            categoryId: selectedCategoryId || undefined,
-            postedAt: new Date().toISOString(),
-          }),
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to create transaction')
-        }
-
-        // Refresh server components to get real data (without full page reload)
-        router.refresh()
-        setError(null)
-      } catch (err) {
-        console.error('Failed to create transaction:', err)
-        setError(err instanceof Error ? err.message : 'Failed to create transaction')
-        // Router refresh will revert optimistic update by fetching latest data
-        router.refresh()
+    try {
+      // Validate form data with Zod
+      const rawData = {
+        accountId: formData.get('accountId'),
+        amount: formData.get('amount'),
+        description: formData.get('description'),
+        merchant: formData.get('merchant') || undefined,
+        type: formData.get('type'),
+        categoryId: formData.get('categoryId') || undefined,
       }
-    })
+
+      const validated = transactionFormSchema.parse(rawData)
+
+      const account = accounts.find((a) => a.id === validated.accountId)
+      if (!account) {
+        throw new Error('Selected account not found')
+      }
+
+      const category = validated.categoryId
+        ? categories.find((c) => c.id === validated.categoryId) || null
+        : null
+
+      // Optimistic transaction (temporary ID)
+      const optimisticTxn: TransactionWithRelations = {
+        id: `temp-${Date.now()}`,
+        accountId: validated.accountId,
+        account: {
+          id: account.id,
+          name: account.name,
+          currency: account.currency,
+        },
+        postedAt: new Date(),
+        amount: validated.amount.toString(),
+        currency: account.currency,
+        description: validated.description,
+        merchant: validated.merchant || null,
+        type: validated.type as TxnType,
+        categoryId: validated.categoryId || null,
+        category: category
+          ? { id: category.id, name: category.name }
+          : null,
+        source: 'MANUAL' as TransactionSource,
+        reviewStatus: 'NONE' as ReviewStatus,
+        isPending: false,
+        installmentPlanId: null,
+        statementDocumentId: null,
+        externalId: null,
+        raw: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      // Add optimistically
+      addOptimisticTransaction({ type: 'add', transaction: optimisticTxn })
+      setShowForm(false)
+
+      // Actually create transaction
+      startTransition(async () => {
+        try {
+          const response = await fetch('/api/transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              accountId: validated.accountId,
+              amount: validated.amount,
+              description: validated.description,
+              merchant: validated.merchant || undefined,
+              type: validated.type,
+              categoryId: validated.categoryId || undefined,
+              postedAt: new Date().toISOString(),
+            }),
+          })
+
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.error || 'Failed to create transaction')
+          }
+
+          // Refresh server components to get real data (without full page reload)
+          router.refresh()
+          setError(null)
+        } catch (err) {
+          console.error('Failed to create transaction:', err)
+          setError(err instanceof Error ? err.message : 'Failed to create transaction')
+          // Router refresh will revert optimistic update by fetching latest data
+          router.refresh()
+        }
+      })
+    } catch (validationError) {
+      // Handle validation errors
+      if (validationError instanceof z.ZodError) {
+        const errorMessages = validationError.errors.map(e => e.message).join(', ')
+        setError(`Validation error: ${errorMessages}`)
+      } else {
+        setError(validationError instanceof Error ? validationError.message : 'Failed to create transaction')
+      }
+    }
   }
 
   async function handleDeleteTransaction(id: string) {
     // Optimistic delete
-    addOptimisticTransaction({ id, action: 'delete' } as any)
+    addOptimisticTransaction({ type: 'delete', id })
 
     startTransition(async () => {
       try {

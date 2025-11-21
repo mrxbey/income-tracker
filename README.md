@@ -45,7 +45,18 @@ A comprehensive personal finance application that provides intelligent tracking,
 - **Flexible Tags** - Create any tags you want (kıyafet, market, yemek, etc.)
 - **Tag Analytics** - Spending by tag, per card, per region, over time
 - **Classification Rules** - Auto-tag based on merchant patterns
-- **Bulk Operations** - Tag multiple transactions at once
+- **Bulk Operations** - Tag, categorize, or delete multiple transactions at once (up to 100)
+
+### Advanced Features
+- **Command Palette (⌘K)** - Keyboard-driven navigation to quickly access any page
+- **Bulk Operations** - Delete, categorize, or tag up to 100 transactions atomically
+- **Reports Dashboard** - Comprehensive financial reports with multiple views
+  - Monthly Summary
+  - Income vs Expenses
+  - Category Breakdown
+  - Net Worth Trends
+  - Tax Summary
+- **Rate Limiting** - API rate limiting to prevent abuse (100 reads/min, 30 mutations/min)
 
 ---
 
@@ -69,11 +80,14 @@ A comprehensive personal finance application that provides intelligent tracking,
 - **OpenAI GPT-4** - Natural language Q&A via Vercel AI SDK
 - **Holt-Winters** - Time series forecasting
 
-### DevOps
+### DevOps & Production
 - **Vercel** - Deployment & hosting
-- **GitHub Actions** - CI/CD
-- **Sentry** - Error tracking
-- **Vitest** - Unit testing
+- **GitHub Actions** - CI/CD pipeline with automated testing
+- **Security Headers** - CSP, HSTS, X-Frame-Options, etc.
+- **Error Boundaries** - React error boundaries for graceful error handling
+- **Comprehensive Logging** - Structured logging with auth, rate limit, and error tracking
+- **API Documentation** - OpenAPI/Swagger specification
+- **Vitest** - Unit testing (60+ test cases)
 - **Playwright** - E2E testing
 
 ---
@@ -83,6 +97,8 @@ A comprehensive personal finance application that provides intelligent tracking,
 - **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** - Detailed implementation plan with phases
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and best practices
 - **[QUICK_START.md](./QUICK_START.md)** - Get started quickly
+- **[docs/openapi.yaml](./docs/openapi.yaml)** - OpenAPI/Swagger API specification
+- **[USER_GUIDE.md](./USER_GUIDE.md)** - Comprehensive user guide
 
 ---
 

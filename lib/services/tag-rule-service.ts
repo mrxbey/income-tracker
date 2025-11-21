@@ -193,45 +193,49 @@ export async function applyTagRulesToTransaction(
     ],
   })
 
-  let tagsAdded = 0
   let categoryUpdated = false
 
-  for (const rule of rules) {
-    const matches = matchesRule(transaction, rule)
+  // Find all matching rules
+  const matchingRules = rules.filter(rule => matchesRule(transaction, rule))
 
-    if (matches) {
-      // Add tags
-      for (const tagId of rule.tagIds) {
-        // Check if tag already exists
-        const existing = await prisma.transactionTag.findFirst({
-          where: {
-            transactionId,
-            tagId,
-          },
-        })
+  // Batch create all tags from matching rules
+  const tagsToUpsert = matchingRules.flatMap(rule =>
+    rule.tagIds.map(tagId => ({
+      transactionId,
+      tagId,
+      source: TagSource.RULE,
+      confidence: 1.0 + rule.confidenceBoost,
+    }))
+  )
 
-        if (!existing) {
-          await prisma.transactionTag.create({
-            data: {
-              transactionId,
-              tagId,
-              source: TagSource.RULE,
-              confidence: 1.0 + rule.confidenceBoost,
-            },
-          })
-          tagsAdded++
-        }
-      }
+  // Get count of existing tags before the operation
+  const existingTags = await prisma.transactionTag.findMany({
+    where: {
+      transactionId,
+      tagId: { in: tagsToUpsert.map(t => t.tagId) },
+    },
+    select: { tagId: true },
+  })
 
-      // Update category if rule has one and transaction doesn't
-      if (rule.categoryId && !transaction.categoryId) {
-        await prisma.transaction.update({
-          where: { id: transactionId },
-          data: { categoryId: rule.categoryId },
-        })
-        categoryUpdated = true
-      }
-    }
+  const existingTagIds = new Set(existingTags.map(t => t.tagId))
+  const tagsAdded = tagsToUpsert.filter(t => !existingTagIds.has(t.tagId)).length
+
+  // Use createMany with skipDuplicates to avoid N+1 queries
+  if (tagsToUpsert.length > 0) {
+    await prisma.transactionTag.createMany({
+      data: tagsToUpsert,
+      skipDuplicates: true,
+    })
+  }
+
+  // Update category if any matching rule has one and transaction doesn't
+  const ruleWithCategory = matchingRules.find(rule => rule.categoryId)
+  if (ruleWithCategory?.categoryId && !transaction.categoryId) {
+    await prisma.transaction.update({
+      where: { id: transactionId },
+      data: { categoryId: ruleWithCategory.categoryId },
+    })
+    categoryUpdated = true
   }
 
   return { tagsAdded, categoryUpdated }

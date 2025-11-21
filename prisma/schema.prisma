@@ -309,6 +309,8 @@ model Transaction {
 
   @@index([accountId, postedAt])
   @@index([accountId, merchant])
+  @@index([accountId, postedAt, type])
+  @@index([accountId, merchant, postedAt])
   @@index([categoryId])
   @@index([source, reviewStatus])
   @@index([postedAt])
@@ -620,6 +622,8 @@ model Budget {
 
   @@unique([userId, categoryId, startDate])
   @@index([userId, isActive])
+  @@index([userId, isActive, startDate, endDate])
+  @@index([userId, categoryId, isActive])
   @@index([startDate, endDate])
 }
 
@@ -690,4 +694,6 @@ model Notification {
   @@index([userId, read])
   @@index([userId, createdAt])
   @@index([type, createdAt])
+  @@index([userId, type, read, createdAt])
+  @@index([userId, priority, read])
 }

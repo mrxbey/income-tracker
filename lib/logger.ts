@@ -198,6 +198,128 @@ class Logger {
     if (this.isProduction) return
     this.debug(`DB Query: ${query}`, context)
   }
+
+  /**
+   * Log authentication event
+   */
+  authEvent(
+    event: 'login' | 'logout' | 'signup' | 'session_refresh' | 'token_refresh',
+    userId?: string,
+    context?: LogContext
+  ): void {
+    this.info(`Authentication: ${event}`, {
+      ...context,
+      userId,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  /**
+   * Log authorization failure
+   */
+  authorizationFailed(
+    resource: string,
+    action: string,
+    userId?: string,
+    reason?: string,
+    context?: LogContext
+  ): void {
+    this.warn(`Authorization failed: ${action} on ${resource}`, {
+      ...context,
+      userId,
+      resource,
+      action,
+      reason,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  /**
+   * Log rate limit violation
+   */
+  rateLimitExceeded(
+    endpoint: string,
+    identifier: string,
+    limit: number,
+    windowMs: number,
+    context?: LogContext
+  ): void {
+    this.warn(`Rate limit exceeded: ${endpoint}`, {
+      ...context,
+      endpoint,
+      identifier,
+      limit,
+      windowMs,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  /**
+   * Log error with full stack trace
+   */
+  errorWithStack(message: string, error: Error, context?: LogContext): void {
+    const errorContext: LogContext = {
+      ...context,
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      },
+      timestamp: new Date().toISOString(),
+    }
+
+    const formatted = this.formatMessage('error', message, errorContext)
+    console.error(formatted)
+
+    // In production, send to error tracking service (e.g., Sentry)
+    if (this.isProduction && typeof window !== 'undefined') {
+      // Client-side error tracking
+      // if (window.Sentry) {
+      //   window.Sentry.captureException(error, { extra: context })
+      // }
+    }
+  }
+
+  /**
+   * Log security event
+   */
+  securityEvent(event: string, severity: 'low' | 'medium' | 'high', context?: LogContext): void {
+    this.warn(`Security event: ${event}`, {
+      ...context,
+      severity,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  /**
+   * Log external API call
+   */
+  externalApiCall(
+    service: string,
+    method: string,
+    status?: number,
+    duration?: number,
+    error?: Error,
+    context?: LogContext
+  ): void {
+    if (error) {
+      this.error(`External API call failed: ${service} ${method}`, error, {
+        ...context,
+        service,
+        method,
+        status,
+        duration,
+      })
+    } else {
+      this.info(`External API call: ${service} ${method}`, {
+        ...context,
+        service,
+        method,
+        status,
+        duration,
+      })
+    }
+  }
 }
 
 // Singleton instance
@@ -209,9 +331,17 @@ export const log = {
   info: logger.info.bind(logger),
   warn: logger.warn.bind(logger),
   error: logger.error.bind(logger),
+  errorWithStack: logger.errorWithStack.bind(logger),
   api: {
     request: logger.apiRequest.bind(logger),
     response: logger.apiResponse.bind(logger),
   },
   db: logger.dbQuery.bind(logger),
+  auth: {
+    event: logger.authEvent.bind(logger),
+    failed: logger.authorizationFailed.bind(logger),
+  },
+  rateLimit: logger.rateLimitExceeded.bind(logger),
+  security: logger.securityEvent.bind(logger),
+  externalApi: logger.externalApiCall.bind(logger),
 }

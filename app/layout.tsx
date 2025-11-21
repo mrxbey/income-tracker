@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 
 // Validate environment variables at startup
 import '@/lib/env'
@@ -22,7 +23,11 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
-        <body className={inter.className}>{children}</body>
+        <body className={inter.className}>
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+        </body>
       </html>
     </ClerkProvider>
   )

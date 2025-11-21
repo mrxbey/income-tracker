@@ -1,0 +1,845 @@
+openapi: 3.0.3
+info:
+  title: Income Tracker API
+  description: |
+    Comprehensive financial tracking and budgeting application API.
+
+    ## Authentication
+    All API endpoints require authentication via Clerk. Include the session token in your requests.
+
+    ## Rate Limiting
+    - READ operations: 100 requests per minute
+    - MUTATION operations: 30 requests per minute
+    - BULK operations: 10 requests per minute
+
+    ## Error Responses
+    All error responses follow this structure:
+    ```json
+    {
+      "error": "Error message",
+      "code": "ERROR_CODE",
+      "details": {}
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://income-tracker.vercel.app
+    description: Production server
+
+tags:
+  - name: Accounts
+    description: Bank account management
+  - name: Transactions
+    description: Financial transaction operations
+  - name: Categories
+    description: Transaction categorization
+  - name: Tags
+    description: Transaction tagging
+  - name: Budgets
+    description: Budget management and tracking
+  - name: Goals
+    description: Financial goals
+  - name: Reports
+    description: Financial reports and analytics
+  - name: Documents
+    description: Document upload and processing
+  - name: Bank Connections
+    description: Plaid bank connection management
+
+components:
+  securitySchemes:
+    ClerkAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk session token
+
+  schemas:
+    Account:
+      type: object
+      required:
+        - id
+        - userId
+        - type
+        - name
+        - currency
+        - balance
+      properties:
+        id:
+          type: string
+          description: Unique account identifier
+        userId:
+          type: string
+          description: Owner user ID
+        type:
+          type: string
+          enum: [DEPOSIT, CREDIT_CARD, LOAN, INVESTMENT, CASH, RECEIVABLE, OTHER]
+        name:
+          type: string
+          description: Account name
+        currency:
+          type: string
+          description: Currency code (e.g., TRY, USD, GBP)
+        balance:
+          type: number
+          format: decimal
+          description: Current account balance
+        isActive:
+          type: boolean
+          description: Whether account is active
+        institutionId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Transaction:
+      type: object
+      required:
+        - id
+        - accountId
+        - postedAt
+        - amount
+        - currency
+        - description
+        - type
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        postedAt:
+          type: string
+          format: date-time
+        amount:
+          type: number
+          format: decimal
+          description: Positive for income, negative for expense
+        currency:
+          type: string
+        description:
+          type: string
+        merchant:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [INCOME, EXPENSE, TRANSFER, FEE, INTEREST]
+        categoryId:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [BANK_API, PDF, IMAGE, MANUAL]
+        reviewStatus:
+          type: string
+          enum: [NONE, PENDING, RESOLVED]
+        isPending:
+          type: boolean
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionTag'
+        createdAt:
+          type: string
+          format: date-time
+
+    TransactionTag:
+      type: object
+      properties:
+        id:
+          type: string
+        tagId:
+          type: string
+        tag:
+          $ref: '#/components/schemas/Tag'
+        source:
+          type: string
+          enum: [SYSTEM, USER, RULE, AI]
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    Tag:
+      type: object
+      required:
+        - id
+        - userId
+        - name
+        - slug
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        color:
+          type: string
+          nullable: true
+        isSystem:
+          type: boolean
+
+    Category:
+      type: object
+      required:
+        - id
+        - userId
+        - name
+        - type
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [INCOME, EXPENSE, TRANSFER, FEE, INTEREST]
+        icon:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+
+    Budget:
+      type: object
+      required:
+        - id
+        - userId
+        - categoryId
+        - amount
+        - startDate
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        categoryId:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        amount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        period:
+          type: string
+          enum: [WEEKLY, MONTHLY, QUARTERLY, YEARLY, CUSTOM]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+
+    Goal:
+      type: object
+      required:
+        - id
+        - userId
+        - name
+        - targetAmount
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        targetAmount:
+          type: number
+          format: decimal
+        currentAmount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+        accountId:
+          type: string
+          nullable: true
+        isCompleted:
+          type: boolean
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+security:
+  - ClerkAuth: []
+
+paths:
+  /api/accounts:
+    get:
+      summary: List all accounts
+      tags: [Accounts]
+      description: Retrieve all accounts for the authenticated user
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [DEPOSIT, CREDIT_CARD, LOAN, INVESTMENT, CASH, RECEIVABLE, OTHER]
+          description: Filter by account type
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+          description: Filter by active status
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create new account
+      tags: [Accounts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - name
+                - currency
+                - balance
+              properties:
+                type:
+                  type: string
+                  enum: [DEPOSIT, CREDIT_CARD, LOAN, INVESTMENT, CASH, RECEIVABLE, OTHER]
+                name:
+                  type: string
+                currency:
+                  type: string
+                countryCode:
+                  type: string
+                regionGroup:
+                  type: string
+                balance:
+                  type: number
+                  format: decimal
+                institutionId:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+
+  /api/accounts/{id}:
+    get:
+      summary: Get account by ID
+      tags: [Accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          description: Account not found
+        '401':
+          description: Unauthorized
+
+    put:
+      summary: Update account
+      tags: [Accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                balance:
+                  type: number
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Account updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          description: Account not found
+        '401':
+          description: Unauthorized
+
+    delete:
+      summary: Delete account
+      tags: [Accounts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Account deleted successfully
+        '404':
+          description: Account not found
+        '401':
+          description: Unauthorized
+
+  /api/transactions:
+    get:
+      summary: List transactions
+      tags: [Transactions]
+      parameters:
+        - name: accountId
+          in: query
+          schema:
+            type: string
+          description: Filter by account ID
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [INCOME, EXPENSE, TRANSFER, FEE, INTEREST]
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  total:
+                    type: integer
+                  hasMore:
+                    type: boolean
+
+    post:
+      summary: Create transaction
+      tags: [Transactions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountId
+                - postedAt
+                - amount
+                - currency
+                - description
+                - type
+              properties:
+                accountId:
+                  type: string
+                postedAt:
+                  type: string
+                  format: date-time
+                amount:
+                  type: number
+                  format: decimal
+                currency:
+                  type: string
+                description:
+                  type: string
+                merchant:
+                  type: string
+                type:
+                  type: string
+                  enum: [INCOME, EXPENSE, TRANSFER, FEE, INTEREST]
+                categoryId:
+                  type: string
+      responses:
+        '201':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /api/transactions/bulk:
+    post:
+      summary: Bulk operations on transactions
+      tags: [Transactions]
+      parameters:
+        - name: operation
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [delete, categorize, tag]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  description: Bulk delete
+                  required:
+                    - transactionIds
+                  properties:
+                    transactionIds:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                      maxItems: 100
+                - type: object
+                  description: Bulk categorize
+                  required:
+                    - transactionIds
+                    - categoryId
+                  properties:
+                    transactionIds:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                      maxItems: 100
+                    categoryId:
+                      type: string
+                - type: object
+                  description: Bulk tag
+                  required:
+                    - transactionIds
+                    - tagIds
+                    - action
+                  properties:
+                    transactionIds:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                      maxItems: 100
+                    tagIds:
+                      type: array
+                      items:
+                        type: string
+                      minItems: 1
+                    action:
+                      type: string
+                      enum: [add, remove]
+      responses:
+        '200':
+          description: Bulk operation completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+        '400':
+          description: Validation error
+        '429':
+          description: Rate limit exceeded
+
+  /api/categories:
+    get:
+      summary: List categories
+      tags: [Categories]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [INCOME, EXPENSE]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+    post:
+      summary: Create category
+      tags: [Categories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - type
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [INCOME, EXPENSE]
+                parentId:
+                  type: string
+                icon:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '201':
+          description: Category created
+
+  /api/budgets:
+    get:
+      summary: List budgets
+      tags: [Budgets]
+      parameters:
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Budget'
+
+    post:
+      summary: Create budget
+      tags: [Budgets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - categoryId
+                - amount
+                - startDate
+              properties:
+                categoryId:
+                  type: string
+                amount:
+                  type: number
+                  format: decimal
+                currency:
+                  type: string
+                period:
+                  type: string
+                  enum: [WEEKLY, MONTHLY, QUARTERLY, YEARLY]
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Budget created
+
+  /api/goals:
+    get:
+      summary: List financial goals
+      tags: [Goals]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Goal'
+
+    post:
+      summary: Create goal
+      tags: [Goals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - targetAmount
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                targetAmount:
+                  type: number
+                  format: decimal
+                targetDate:
+                  type: string
+                  format: date-time
+                accountId:
+                  type: string
+      responses:
+        '201':
+          description: Goal created
+
+  /api/plaid/link-token:
+    post:
+      summary: Create Plaid Link token
+      tags: [Bank Connections]
+      description: Generate a Link token for Plaid integration
+      responses:
+        '200':
+          description: Link token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  linkToken:
+                    type: string
+                  expiration:
+                    type: string
+                    format: date-time
+
+  /api/plaid/exchange-token:
+    post:
+      summary: Exchange Plaid public token
+      tags: [Bank Connections]
+      description: Exchange public token for access token and create bank connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - publicToken
+                - metadata
+              properties:
+                publicToken:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Token exchanged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bankConnectionId:
+                    type: string
+                  accounts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'

@@ -1,7 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
+import { DashboardLayoutClient } from '@/components/layout/dashboard-layout-client'
 
 export default async function DashboardLayout({
   children,
@@ -24,15 +23,7 @@ export default async function DashboardLayout({
         Skip to main content
       </a>
 
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main id="main-content" className="flex-1 overflow-y-auto bg-muted/10 p-6" tabIndex={-1}>
-            {children}
-          </main>
-        </div>
-      </div>
+      <DashboardLayoutClient>{children}</DashboardLayoutClient>
     </>
   )
 }

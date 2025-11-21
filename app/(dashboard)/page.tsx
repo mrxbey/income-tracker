@@ -6,6 +6,7 @@ import { db } from '@/lib/prisma'
 import { Decimal } from 'decimal.js'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { NetWorthChart } from '@/components/features/networth/NetWorthChart'
 
 async function getDashboardData(userId: string) {
   // Fetch all accounts for the user
@@ -201,6 +202,16 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Net Worth Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Net Worth Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NetWorthChart />
+        </CardContent>
+      </Card>
 
       {/* Accounts and Recent Activity */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

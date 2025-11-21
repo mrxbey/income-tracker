@@ -87,7 +87,7 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-background" role="complementary" aria-label="Sidebar">
+    <div className="hidden md:flex h-full w-64 flex-col border-r bg-background" role="complementary" aria-label="Sidebar">
       <div className="p-6">
         <Link href="/" className="flex items-center space-x-2" aria-label="Go to dashboard">
           <Wallet className="h-6 w-6 text-primary" aria-hidden="true" />

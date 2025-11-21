@@ -3,6 +3,10 @@ import { QuickFiltersBar } from '@/components/features/filters/QuickFiltersBar'
 import { QuickAddButton } from '@/components/features/quick-add/QuickAddButton'
 import { ImportDataDialog } from '@/components/features/import/ImportDataDialog'
 import { ExportDataDialog } from '@/components/features/export/ExportDataDialog'
+import { AICategorization } from '@/components/features/ai/AICategorization'
+import { ReceiptScanner } from '@/components/features/ai/ReceiptScanner'
+import { RecurringPatternDetector } from '@/components/features/ai/RecurringPatternDetector'
+import { SpendingAlerts } from '@/components/features/ai/SpendingAlerts'
 
 export default function TransactionsPage() {
   return (
@@ -16,6 +20,17 @@ export default function TransactionsPage() {
           <ImportDataDialog />
           <ExportDataDialog />
         </div>
+      </div>
+
+      {/* AI Features Toolbar */}
+      <div className="flex flex-wrap gap-2 rounded-lg border bg-card p-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          AI Tools:
+        </div>
+        <AICategorization />
+        <ReceiptScanner />
+        <RecurringPatternDetector />
+        <SpendingAlerts />
       </div>
 
       <QuickFiltersBar />

@@ -55,27 +55,31 @@ const navItems: SidebarNavItem[] = [
     icon: CalendarCheck,
   },
 
-  // Coming Soon Features
+  // Additional Features
+  {
+    title: 'Budgets',
+    href: '/budgets',
+    icon: ClipboardList,
+  },
+  {
+    title: 'Goals',
+    href: '/goals',
+    icon: TrendingUp,
+  },
   {
     title: 'Tags',
     href: '/tags',
     icon: Tags,
-    badge: 'Soon',
-    disabled: true,
   },
   {
     title: 'Imports',
     href: '/imports',
     icon: Upload,
-    badge: 'Soon',
-    disabled: true,
   },
   {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
-    badge: 'Soon',
-    disabled: true,
   },
 ]
 

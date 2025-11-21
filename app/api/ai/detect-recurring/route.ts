@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { detectRecurringPatterns, createFixedExpenseFromPattern } from '@/lib/ai/recurring-detection'
+import { applyRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,10 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(_request: NextRequest) {
   try {
+    // Apply rate limiting for expensive AI operations
+    const rateLimitResult = applyRateLimit(_request, 'EXPENSIVE')
+    if (!rateLimitResult.success) return rateLimitResult.response
+
     const { userId } = await auth()
 
     if (!userId) {
@@ -22,10 +27,15 @@ export async function GET(_request: NextRequest) {
 
     const patterns = await detectRecurringPatterns(userId, minOccurrences)
 
-    return NextResponse.json({
-      patterns,
-      count: patterns.length,
-    })
+    return NextResponse.json(
+      {
+        patterns,
+        count: patterns.length,
+      },
+      {
+        headers: getRateLimitHeaders('EXPENSIVE', rateLimitResult.remaining, rateLimitResult.reset),
+      }
+    )
   } catch (error) {
     console.error('Error in detect-recurring route:', error)
     return NextResponse.json(
@@ -41,6 +51,10 @@ export async function GET(_request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting for expensive AI operations
+    const rateLimitResult = applyRateLimit(request, 'EXPENSIVE')
+    if (!rateLimitResult.success) return rateLimitResult.response
+
     const { userId } = await auth()
 
     if (!userId) {
@@ -60,10 +74,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    return NextResponse.json({
-      success: true,
-      fixedExpenseId: result.fixedExpenseId,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        fixedExpenseId: result.fixedExpenseId,
+      },
+      {
+        headers: getRateLimitHeaders('EXPENSIVE', rateLimitResult.remaining, rateLimitResult.reset),
+      }
+    )
   } catch (error) {
     console.error('Error creating fixed expense from pattern:', error)
     return NextResponse.json(

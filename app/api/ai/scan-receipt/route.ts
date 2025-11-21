@@ -1,8 +1,9 @@
 import { auth } from '@clerk/nextjs/server'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { scanAndCategorizeReceipt } from '@/lib/ai/gemini-receipt-scanner'
 import { handleError, UnauthorizedError } from '@/lib/errors'
+import { applyRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 
 const scanReceiptSchema = z.object({
   imageBase64: z.string(),
@@ -10,6 +11,10 @@ const scanReceiptSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // Apply rate limiting for expensive AI operations
+    const rateLimitResult = applyRateLimit(req, 'EXPENSIVE')
+    if (!rateLimitResult.success) return rateLimitResult.response
+
     const { userId } = await auth()
     if (!userId) throw new UnauthorizedError()
 
@@ -18,7 +23,9 @@ export async function POST(req: NextRequest) {
 
     const result = await scanAndCategorizeReceipt(imageBase64)
 
-    return Response.json(result)
+    return NextResponse.json(result, {
+      headers: getRateLimitHeaders('EXPENSIVE', rateLimitResult.remaining, rateLimitResult.reset),
+    })
   } catch (error) {
     return handleError(error)
   }

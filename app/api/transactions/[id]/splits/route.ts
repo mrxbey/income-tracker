@@ -5,6 +5,7 @@ import {
   getTransactionWithSplits,
   deleteTransactionSplits,
 } from '@/lib/services/split-transaction-service'
+import { db as prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,18 @@ export async function GET(
 
     const params = await context.params
     const transactionId = params.id
+
+    // Verify transaction belongs to the user (IDOR protection)
+    const transactionOwnership = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        account: { userId },
+      },
+    })
+
+    if (!transactionOwnership) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+    }
 
     const transaction = await getTransactionWithSplits(transactionId)
 
@@ -60,6 +73,19 @@ export async function POST(
 
     const params = await context.params
     const transactionId = params.id
+
+    // Verify transaction belongs to the user (IDOR protection)
+    const transactionOwnership = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        account: { userId },
+      },
+    })
+
+    if (!transactionOwnership) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+    }
+
     const body = await _request.json()
     const { splits } = body
 
@@ -119,6 +145,19 @@ export async function DELETE(
 
     const params = await context.params
     const transactionId = params.id
+
+    // Verify transaction belongs to the user (IDOR protection)
+    const transactionOwnership = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        account: { userId },
+      },
+    })
+
+    if (!transactionOwnership) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+    }
+
     const { searchParams } = new URL(_request.url)
     const newCategoryId = searchParams.get('categoryId')
 

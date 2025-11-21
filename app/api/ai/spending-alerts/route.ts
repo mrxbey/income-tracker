@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { generateSpendingAlerts } from '@/lib/ai/spending-alerts'
+import { applyRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,10 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(_request: NextRequest) {
   try {
+    // Apply rate limiting for expensive AI operations
+    const rateLimitResult = applyRateLimit(_request, 'EXPENSIVE')
+    if (!rateLimitResult.success) return rateLimitResult.response
+
     const { userId } = await auth()
 
     if (!userId) {
@@ -19,10 +24,15 @@ export async function GET(_request: NextRequest) {
 
     const alerts = await generateSpendingAlerts(userId)
 
-    return NextResponse.json({
-      alerts,
-      count: alerts.length,
-    })
+    return NextResponse.json(
+      {
+        alerts,
+        count: alerts.length,
+      },
+      {
+        headers: getRateLimitHeaders('EXPENSIVE', rateLimitResult.remaining, rateLimitResult.reset),
+      }
+    )
   } catch (error) {
     console.error('Error in spending-alerts route:', error)
     return NextResponse.json(

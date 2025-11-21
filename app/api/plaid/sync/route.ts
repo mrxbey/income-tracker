@@ -5,6 +5,7 @@ import { db as prisma } from '@/lib/prisma'
 import { TxnType } from '@prisma/client'
 import { Decimal } from 'decimal.js'
 import { decrypt } from '@/lib/crypto'
+import { applyRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,10 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting for expensive Plaid operations
+    const rateLimitResult = applyRateLimit(request, 'EXPENSIVE')
+    if (!rateLimitResult.success) return rateLimitResult.response
+
     const { userId } = await auth()
 
     if (!userId) {
@@ -109,15 +114,20 @@ export async function POST(request: NextRequest) {
       data: { lastSyncAt: new Date() },
     })
 
-    return NextResponse.json({
-      synced: validTransactions.length,
-      transactions: validTransactions.map((txn) => ({
-        id: txn!.id,
-        description: txn!.description,
-        amount: txn!.amount,
-        date: txn!.postedAt,
-      })),
-    })
+    return NextResponse.json(
+      {
+        synced: validTransactions.length,
+        transactions: validTransactions.map((txn) => ({
+          id: txn!.id,
+          description: txn!.description,
+          amount: txn!.amount,
+          date: txn!.postedAt,
+        })),
+      },
+      {
+        headers: getRateLimitHeaders('EXPENSIVE', rateLimitResult.remaining, rateLimitResult.reset),
+      }
+    )
   } catch (error) {
     console.error('Error in sync POST route:', error)
     return NextResponse.json(
